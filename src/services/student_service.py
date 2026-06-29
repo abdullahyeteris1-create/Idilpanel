@@ -33,7 +33,8 @@ class StudentService(BaseService):
 
     def create_student(self, data):
         validated_data = self.validate_student(data)
-        return self.get_repository("student").create(validated_data)
+        repository_payload = self._to_repository_payload(validated_data)
+        return self.get_repository("student").create(repository_payload)
 
     def get_student(self, record_id):
         self.validate_student()
@@ -45,7 +46,8 @@ class StudentService(BaseService):
 
     def update_student(self, record_id, data):
         validated_data = self.validate_student(data)
-        return self.get_repository("student").update(record_id, validated_data)
+        repository_payload = self._to_repository_payload(validated_data)
+        return self.get_repository("student").update(record_id, repository_payload)
 
     def delete_student(self, record_id):
         self.validate_student()
@@ -117,3 +119,20 @@ class StudentService(BaseService):
                 return datetime.fromisoformat(cleaned_value).date()
             except ValueError as second_error:
                 raise ValueError("student start date must be a valid date") from second_error
+
+    def _to_repository_payload(self, data: Mapping[str, Any]) -> dict[str, Any]:
+        payload: dict[str, Any] = {}
+
+        full_name = self._get_field_value(data, self._FULL_NAME_FIELDS)
+        if full_name is not None:
+            payload["ad_soyad"] = full_name
+
+        class_value = self._get_field_value(data, self._CLASS_FIELDS)
+        if class_value is not None:
+            payload["sinif"] = class_value
+
+        start_date_value = self._get_field_value(data, self._START_DATE_FIELDS)
+        if start_date_value is not None:
+            payload["baslangic_tarihi"] = start_date_value
+
+        return payload
