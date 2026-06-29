@@ -6,6 +6,9 @@ from components.badge import build_badge
 from components.button import build_button
 from components.card import build_card, build_lesson_card
 from components.text_field import build_text_field
+from controllers.student_controller import StudentController
+from repositories.student_repository import StudentRepository
+from services.student_service import StudentService
 from theme.theme import THEME_TOKENS
 
 
@@ -16,40 +19,45 @@ WEIGHT_MAP = {
 }
 
 
-STATIC_LESSON_SLOTS = {
-    (0, 0): {
-        "student_name": "Ayse Demir",
-        "class_name": "5-A",
-        "level_no": "2",
-        "progress_text": "6 / 16",
-        "status_text": "Planlandi",
-        "status_variant": "primary",
-    },
-    (1, 3): {
-        "student_name": "Mehmet Kaya",
-        "class_name": "6-B",
-        "level_no": "1",
-        "progress_text": "3 / 14",
-        "status_text": "Devam Ediyor",
-        "status_variant": "success",
-    },
-    (2, 5): {
-        "student_name": "Zeynep Aras",
-        "class_name": "7-C",
-        "level_no": "3",
-        "progress_text": "9 / 18",
-        "status_text": "Riskli",
-        "status_variant": "warning",
-    },
-    (4, 2): {
-        "student_name": "Ali Can",
-        "class_name": "8-A",
-        "level_no": "4",
-        "progress_text": "12 / 20",
-        "status_text": "Gecikme",
-        "status_variant": "danger",
-    },
-}
+DAY_COUNT = 7
+SLOTS_PER_DAY = 9
+TOTAL_SLOTS = DAY_COUNT * SLOTS_PER_DAY
+
+
+def _status_variant_for_index(index: int) -> str:
+    variants = ["primary", "success", "warning", "secondary"]
+    return variants[index % len(variants)]
+
+
+def _build_slots_from_students(student_rows: list[dict]) -> dict[tuple[int, int], dict[str, str]]:
+    slots: dict[tuple[int, int], dict[str, str]] = {}
+    for index, student in enumerate(student_rows[:TOTAL_SLOTS]):
+        day_index = index // SLOTS_PER_DAY
+        slot_index = index % SLOTS_PER_DAY
+
+        full_name = str(student.get("ad_soyad") or "-").strip() or "-"
+        class_name = str(student.get("sinif") or "-").strip() or "-"
+        status_text = str(student.get("durum") or "Aktif").strip() or "Aktif"
+        start_date = str(student.get("baslangic_tarihi") or "-").strip() or "-"
+
+        slots[(day_index, slot_index)] = {
+            "student_name": full_name,
+            "class_name": class_name,
+            "level_no": "-",
+            "progress_text": start_date,
+            "status_text": status_text,
+            "status_variant": _status_variant_for_index(index),
+        }
+    return slots
+
+
+def _load_weekly_student_slots() -> dict[tuple[int, int], dict[str, str]]:
+    controller = StudentController(StudentService(student_repository=StudentRepository()))
+    try:
+        students = controller.list_students(limit=TOTAL_SLOTS, offset=0)
+    except Exception:
+        return {}
+    return _build_slots_from_students(students)
 
 
 def _font_weight(token_weight: int) -> ft.FontWeight:
@@ -195,6 +203,7 @@ def _build_lesson_slot(
 def _build_day_column(
     day_name: str,
     day_index: int,
+    lesson_slots: dict[tuple[int, int], dict[str, str]],
     selected_slot_key: tuple[int, int],
     focused_slot_key: tuple[int, int] | None,
     hovered_lesson_slot_key: tuple[int, int] | None,
@@ -209,9 +218,9 @@ def _build_day_column(
     spacing = THEME_TOKENS["spacing"]
 
     slot_controls: list[ft.Control] = []
-    for slot_index in range(9):
+    for slot_index in range(SLOTS_PER_DAY):
         slot_key = (day_index, slot_index)
-        lesson_data = STATIC_LESSON_SLOTS.get(slot_key)
+        lesson_data = lesson_slots.get(slot_key)
         if lesson_data:
             lesson_slot = _build_lesson_slot(
                 lesson_data=lesson_data,
@@ -239,7 +248,7 @@ def _build_day_column(
             )
 
     return ft.Container(
-        width=spacing["xxxl"] * 4,
+        width=spacing["xxxl"] * 3 + spacing["xl"],
         content=build_card(
             title=day_name,
             content=ft.Column(
@@ -252,6 +261,7 @@ def _build_day_column(
 
 
 def _build_schedule_grid(
+    lesson_slots: dict[tuple[int, int], dict[str, str]],
     selected_slot_key: tuple[int, int],
     focused_slot_key: tuple[int, int] | None,
     hovered_lesson_slot_key: tuple[int, int] | None,
@@ -277,12 +287,13 @@ def _build_schedule_grid(
 
     return build_card(
         title="Haftalik Program",
-        subtitle="7 gun, 9 slot ve secili statik ders kartlari",
+        subtitle=f"7 gun, 9 slot, salt okunur ogrenci kartlari ({len(lesson_slots)} kayit)",
         content=ft.Row(
             controls=[
                 _build_day_column(
                     day_name=day_name,
                     day_index=day_index,
+                    lesson_slots=lesson_slots,
                     selected_slot_key=selected_slot_key,
                     focused_slot_key=focused_slot_key,
                     hovered_lesson_slot_key=hovered_lesson_slot_key,
@@ -369,7 +380,8 @@ def build_weekly_program_page() -> ft.Control:
     colors = THEME_TOKENS["colors"]
     typography = THEME_TOKENS["typography"]
     spacing = THEME_TOKENS["spacing"]
-    selected_slot_state = {"value": next(iter(STATIC_LESSON_SLOTS.keys()))}
+    lesson_slots = _load_weekly_student_slots()
+    selected_slot_state = {"value": next(iter(lesson_slots.keys()), (0, 0))}
     focused_slot_state = {"value": selected_slot_state["value"]}
     hovered_lesson_slot_state = {"value": None}
     hovered_empty_slot_state = {"value": None}
@@ -443,7 +455,7 @@ def build_weekly_program_page() -> ft.Control:
 
     detail_panel = build_card(
         title="Detay Paneli",
-        subtitle="Secilen ders kartinin statik bilgileri",
+        subtitle="Secilen kartin salt okunur ogrenci bilgileri",
         content=ft.Column(
             controls=[
                 student_group,
@@ -455,7 +467,15 @@ def build_weekly_program_page() -> ft.Control:
     )
 
     def _apply_selected_lesson(slot_key: tuple[int, int]) -> None:
-        lesson_data = STATIC_LESSON_SLOTS[slot_key]
+        lesson_data = lesson_slots.get(slot_key)
+        if lesson_data is None:
+            student_value.value = "-"
+            class_value.value = "-"
+            level_value.value = "-"
+            progress_value.value = "-"
+            status_badge_container.content = build_badge(text="-", variant="secondary")
+            return
+
         student_value.value = lesson_data["student_name"]
         class_value.value = lesson_data["class_name"]
         level_value.value = lesson_data["level_no"]
@@ -553,6 +573,7 @@ def build_weekly_program_page() -> ft.Control:
         e.page.update()
 
     schedule_grid = _build_schedule_grid(
+        lesson_slots=lesson_slots,
         selected_slot_key=selected_slot_state["value"],
         focused_slot_key=focused_slot_state["value"],
         hovered_lesson_slot_key=hovered_lesson_slot_state["value"],
@@ -571,11 +592,11 @@ def build_weekly_program_page() -> ft.Control:
         columns=12,
         controls=[
             ft.Container(
-                col={"xs": 12, "sm": 12, "md": 12, "lg": 8, "xl": 8, "xxl": 8},
+                col={"xs": 12, "sm": 12, "md": 12, "lg": 9, "xl": 9, "xxl": 9},
                 content=schedule_grid,
             ),
             ft.Container(
-                col={"xs": 12, "sm": 12, "md": 12, "lg": 4, "xl": 4, "xxl": 4},
+                col={"xs": 12, "sm": 12, "md": 12, "lg": 3, "xl": 3, "xxl": 3},
                 content=detail_panel,
             ),
         ],
@@ -587,9 +608,18 @@ def build_weekly_program_page() -> ft.Control:
     summary_section = ft.ResponsiveRow(
         columns=12,
         controls=[
-            ft.Container(col={"xs": 12, "sm": 12, "md": 6, "lg": 4, "xl": 4}, content=_build_summary_card("Toplam Ders", "0")),
-            ft.Container(col={"xs": 12, "sm": 12, "md": 6, "lg": 4, "xl": 4}, content=_build_summary_card("Bos Saat", "0")),
-            ft.Container(col={"xs": 12, "sm": 12, "md": 12, "lg": 4, "xl": 4}, content=_build_summary_card("Haftalik Sure", "0 dk")),
+            ft.Container(
+                col={"xs": 12, "sm": 12, "md": 6, "lg": 4, "xl": 4},
+                content=_build_summary_card("Toplam Kart", str(len(lesson_slots))),
+            ),
+            ft.Container(
+                col={"xs": 12, "sm": 12, "md": 6, "lg": 4, "xl": 4},
+                content=_build_summary_card("Bos Slot", str(TOTAL_SLOTS - len(lesson_slots))),
+            ),
+            ft.Container(
+                col={"xs": 12, "sm": 12, "md": 12, "lg": 4, "xl": 4},
+                content=_build_summary_card("Kaynak", "SQLite / Student"),
+            ),
         ],
         spacing=spacing["md"],
         run_spacing=spacing["md"],
