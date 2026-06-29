@@ -2,6 +2,7 @@
 
 import flet as ft
 
+from components.badge import build_badge
 from theme.theme import THEME_TOKENS
 
 
@@ -64,5 +65,86 @@ def build_card(
         content=ft.Column(
             controls=column_children,
             spacing=spacing["md"],
+        ),
+    )
+
+
+def build_lesson_card(
+    student_name: str,
+    class_name: str,
+    level_no: str,
+    progress_text: str,
+    status_text: str,
+    status_variant: str = "secondary",
+) -> ft.Container:
+    """Create a compact lesson card for static weekly schedule slots."""
+    colors = THEME_TOKENS["colors"]
+    typography = THEME_TOKENS["typography"]
+    spacing = THEME_TOKENS["spacing"]
+    radius = THEME_TOKENS["radius"]
+
+    return ft.Container(
+        bgcolor=colors["surface"],
+        clip_behavior=ft.ClipBehavior.HARD_EDGE,
+        height=spacing["xxxl"] * 2,
+        border=ft.Border(
+            top=ft.BorderSide(1, colors["border_neutral"]),
+            right=ft.BorderSide(1, colors["border_neutral"]),
+            bottom=ft.BorderSide(1, colors["border_neutral"]),
+            left=ft.BorderSide(1, colors["border_neutral"]),
+        ),
+        border_radius=radius["input"],
+        padding=ft.Padding(
+            left=spacing["md"],
+            top=spacing["sm"],
+            right=spacing["md"],
+            bottom=spacing["sm"],
+        ),
+        content=ft.Column(
+            controls=[
+                ft.Row(
+                    controls=[
+                        ft.Container(
+                            expand=True,
+                            content=ft.Text(
+                                value=student_name,
+                                size=typography["body"]["max_size"],
+                                weight=ft.FontWeight.W_600,
+                                color=colors["text_primary"],
+                                no_wrap=True,
+                                overflow=ft.TextOverflow.ELLIPSIS,
+                            ),
+                        ),
+                        ft.Container(
+                            content=build_badge(text=status_text, variant=status_variant),
+                        ),
+                    ],
+                    alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+                    vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                    spacing=spacing["sm"],
+                ),
+                ft.Text(
+                    value=f"Sinif: {class_name}",
+                    size=typography["small"]["max_size"],
+                    weight=ft.FontWeight.W_600,
+                    color=colors["text_secondary"],
+                ),
+                ft.Text(
+                    value=f"Kur No: {level_no}",
+                    size=typography["small"]["max_size"],
+                    weight=ft.FontWeight.W_600,
+                    color=colors["text_secondary"],
+                ),
+                ft.Text(
+                    value=f"Ilerleme: {progress_text}",
+                    size=typography["small"]["max_size"],
+                    weight=ft.FontWeight.W_600,
+                    color=colors["text_primary"],
+                ),
+            ],
+            spacing=spacing["xs"],
+            tight=True,
+            horizontal_alignment=ft.CrossAxisAlignment.START,
+            alignment=ft.MainAxisAlignment.CENTER,
         ),
     )
