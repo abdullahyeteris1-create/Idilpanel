@@ -9,7 +9,7 @@ from views.sidebar import build_sidebar
 from views.topbar import build_topbar
 
 
-DESKTOP_BREAKPOINT = 1200
+DESKTOP_BREAKPOINT = 1366
 TABLET_BREAKPOINT = 768
 
 

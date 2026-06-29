@@ -56,33 +56,69 @@ def _font_weight(token_weight: int) -> ft.FontWeight:
     return WEIGHT_MAP.get(token_weight, ft.FontWeight.W_400)
 
 
-def _build_slot() -> ft.Container:
+def _with_alpha(color: str, alpha: str = "1A") -> str:
+    if len(color) == 7:
+        return f"{color}{alpha}"
+    return color
+
+
+def _build_slot(
+    slot_key: tuple[int, int],
+    selected_slot_key: tuple[int, int],
+    focused_slot_key: tuple[int, int] | None,
+    hovered_empty_slot_key: tuple[int, int] | None,
+    on_hover,
+    on_focus,
+    empty_slot_refs: dict[tuple[int, int], ft.Container],
+) -> ft.GestureDetector:
     colors = THEME_TOKENS["colors"]
     spacing = THEME_TOKENS["spacing"]
     radius = THEME_TOKENS["radius"]
     typography = THEME_TOKENS["typography"]
 
-    return ft.Container(
-        bgcolor=colors["background"],
+    is_selected = slot_key == selected_slot_key
+    is_focused = slot_key == focused_slot_key
+    is_hovered = slot_key == hovered_empty_slot_key
+
+    border_color = colors["border_neutral"]
+    if is_hovered:
+        border_color = colors["secondary"]
+    if is_focused:
+        border_color = colors["secondary"]
+    if is_selected:
+        border_color = colors["primary"]
+
+    slot_container = ft.Container(
+        bgcolor=_with_alpha(colors["surface"], "CC") if is_hovered else colors["background"],
         border=ft.Border(
-            top=ft.BorderSide(1, colors["border_neutral"]),
-            right=ft.BorderSide(1, colors["border_neutral"]),
-            bottom=ft.BorderSide(1, colors["border_neutral"]),
-            left=ft.BorderSide(1, colors["border_neutral"]),
+            top=ft.BorderSide(2 if is_focused or is_selected else 1, border_color),
+            right=ft.BorderSide(2 if is_focused or is_selected else 1, border_color),
+            bottom=ft.BorderSide(2 if is_focused or is_selected else 1, border_color),
+            left=ft.BorderSide(2 if is_focused or is_selected else 1, border_color),
         ),
         border_radius=radius["input"],
         padding=spacing["sm"],
+        animate=120,
         content=ft.Row(
             controls=[
                 ft.Text(
                     value="+",
                     size=typography["subtitle"]["min_size"],
                     weight=_font_weight(typography["subtitle"]["weight"]),
-                    color=colors["text_secondary"],
+                    color=colors["secondary"] if is_hovered else colors["text_secondary"],
                 )
             ],
             alignment=ft.MainAxisAlignment.CENTER,
         ),
+    )
+
+    empty_slot_refs[slot_key] = slot_container
+
+    return ft.GestureDetector(
+        mouse_cursor=ft.MouseCursor.CLICK,
+        on_hover=lambda e, key=slot_key: on_hover(key, e),
+        on_tap_down=lambda e, key=slot_key: on_focus(key, e),
+        content=slot_container,
     )
 
 
@@ -90,32 +126,51 @@ def _build_lesson_slot(
     lesson_data: dict[str, str],
     slot_key: tuple[int, int],
     selected_slot_key: tuple[int, int],
+    focused_slot_key: tuple[int, int] | None,
+    hovered_lesson_slot_key: tuple[int, int] | None,
     on_select,
-) -> ft.Container:
+    on_hover,
+    on_focus,
+    lesson_slot_refs: dict[tuple[int, int], ft.Container],
+) -> ft.GestureDetector:
     colors = THEME_TOKENS["colors"]
     radius = THEME_TOKENS["radius"]
+    shadows = THEME_TOKENS["shadows"]
 
-    return ft.Container(
+    is_selected = slot_key == selected_slot_key
+    is_focused = slot_key == focused_slot_key
+    is_hovered = slot_key == hovered_lesson_slot_key
+
+    border_color = colors["background"]
+    border_width = 2
+    background = colors["surface"]
+    shadow = None
+
+    if is_hovered:
+        border_color = _with_alpha(colors["primary"], "80")
+        background = _with_alpha(colors["primary"], "08")
+
+    if is_focused:
+        border_color = colors["secondary"]
+
+    if is_selected:
+        border_color = colors["primary"]
+        background = _with_alpha(colors["primary"], "12")
+        shadow = shadows["card"]
+
+    lesson_container = ft.Container(
+        bgcolor=background,
+        shadow=shadow,
+        animate=120,
+        animate_scale=120,
+        scale=1.0,
         border=ft.Border(
-            top=ft.BorderSide(
-                2,
-                colors["primary"] if slot_key == selected_slot_key else colors["background"],
-            ),
-            right=ft.BorderSide(
-                2,
-                colors["primary"] if slot_key == selected_slot_key else colors["background"],
-            ),
-            bottom=ft.BorderSide(
-                2,
-                colors["primary"] if slot_key == selected_slot_key else colors["background"],
-            ),
-            left=ft.BorderSide(
-                2,
-                colors["primary"] if slot_key == selected_slot_key else colors["background"],
-            ),
+            top=ft.BorderSide(border_width, border_color),
+            right=ft.BorderSide(border_width, border_color),
+            bottom=ft.BorderSide(border_width, border_color),
+            left=ft.BorderSide(border_width, border_color),
         ),
         border_radius=radius["input"],
-        on_click=lambda e, key=slot_key: on_select(key, e),
         content=build_lesson_card(
             student_name=lesson_data["student_name"],
             class_name=lesson_data["class_name"],
@@ -126,13 +181,30 @@ def _build_lesson_slot(
         ),
     )
 
+    lesson_slot_refs[slot_key] = lesson_container
+
+    return ft.GestureDetector(
+        mouse_cursor=ft.MouseCursor.CLICK,
+        on_hover=lambda e, key=slot_key: on_hover(key, e),
+        on_tap_down=lambda e, key=slot_key: on_focus(key, e),
+        on_tap=lambda e, key=slot_key: on_select(key, e),
+        content=lesson_container,
+    )
+
 
 def _build_day_column(
     day_name: str,
     day_index: int,
     selected_slot_key: tuple[int, int],
+    focused_slot_key: tuple[int, int] | None,
+    hovered_lesson_slot_key: tuple[int, int] | None,
+    hovered_empty_slot_key: tuple[int, int] | None,
     on_select,
+    on_lesson_hover,
+    on_empty_hover,
+    on_focus,
     lesson_slot_refs: dict[tuple[int, int], ft.Container],
+    empty_slot_refs: dict[tuple[int, int], ft.Container],
 ) -> ft.Container:
     spacing = THEME_TOKENS["spacing"]
 
@@ -145,15 +217,29 @@ def _build_day_column(
                 lesson_data=lesson_data,
                 slot_key=slot_key,
                 selected_slot_key=selected_slot_key,
+                focused_slot_key=focused_slot_key,
+                hovered_lesson_slot_key=hovered_lesson_slot_key,
                 on_select=on_select,
+                on_hover=on_lesson_hover,
+                on_focus=on_focus,
+                lesson_slot_refs=lesson_slot_refs,
             )
-            lesson_slot_refs[slot_key] = lesson_slot
             slot_controls.append(lesson_slot)
         else:
-            slot_controls.append(_build_slot())
+            slot_controls.append(
+                _build_slot(
+                    slot_key=slot_key,
+                    selected_slot_key=selected_slot_key,
+                    focused_slot_key=focused_slot_key,
+                    hovered_empty_slot_key=hovered_empty_slot_key,
+                    on_hover=on_empty_hover,
+                    on_focus=on_focus,
+                    empty_slot_refs=empty_slot_refs,
+                )
+            )
 
     return ft.Container(
-        expand=True,
+        width=spacing["xxxl"] * 4,
         content=build_card(
             title=day_name,
             content=ft.Column(
@@ -167,8 +253,15 @@ def _build_day_column(
 
 def _build_schedule_grid(
     selected_slot_key: tuple[int, int],
+    focused_slot_key: tuple[int, int] | None,
+    hovered_lesson_slot_key: tuple[int, int] | None,
+    hovered_empty_slot_key: tuple[int, int] | None,
     on_select,
+    on_lesson_hover,
+    on_empty_hover,
+    on_focus,
     lesson_slot_refs: dict[tuple[int, int], ft.Container],
+    empty_slot_refs: dict[tuple[int, int], ft.Container],
 ) -> ft.Control:
     spacing = THEME_TOKENS["spacing"]
 
@@ -191,14 +284,23 @@ def _build_schedule_grid(
                     day_name=day_name,
                     day_index=day_index,
                     selected_slot_key=selected_slot_key,
+                    focused_slot_key=focused_slot_key,
+                    hovered_lesson_slot_key=hovered_lesson_slot_key,
+                    hovered_empty_slot_key=hovered_empty_slot_key,
                     on_select=on_select,
+                    on_lesson_hover=on_lesson_hover,
+                    on_empty_hover=on_empty_hover,
+                    on_focus=on_focus,
                     lesson_slot_refs=lesson_slot_refs,
+                    empty_slot_refs=empty_slot_refs,
                 )
                 for day_index, day_name in enumerate(day_names)
             ],
             spacing=spacing["sm"],
             alignment=ft.MainAxisAlignment.START,
             vertical_alignment=ft.CrossAxisAlignment.START,
+            wrap=False,
+            scroll=ft.ScrollMode.AUTO,
         ),
     )
 
@@ -206,16 +308,23 @@ def _build_schedule_grid(
 def _build_summary_card(title: str, value: str) -> ft.Container:
     colors = THEME_TOKENS["colors"]
     typography = THEME_TOKENS["typography"]
+    spacing = THEME_TOKENS["spacing"]
 
     return ft.Container(
         expand=True,
         content=build_card(
             title=title,
-            content=ft.Text(
-                value=value,
-                size=typography["card_title"]["max_size"],
-                weight=_font_weight(typography["card_title"]["weight"]),
-                color=colors["text_primary"],
+            content=ft.Column(
+                controls=[
+                    ft.Text(
+                        value=value,
+                        size=typography["page_title"]["min_size"],
+                        weight=ft.FontWeight.W_700,
+                        color=colors["text_primary"],
+                    ),
+                ],
+                spacing=spacing["xs"],
+                horizontal_alignment=ft.CrossAxisAlignment.START,
             ),
         ),
     )
@@ -231,6 +340,7 @@ def _build_detail_group(
     typography = THEME_TOKENS["typography"]
 
     return ft.Container(
+        bgcolor=_with_alpha(colors["surface"], "E6"),
         border=ft.Border(
             top=ft.BorderSide(1, colors["border_neutral"]),
             right=ft.BorderSide(1, colors["border_neutral"]),
@@ -238,16 +348,16 @@ def _build_detail_group(
             left=ft.BorderSide(1, colors["border_neutral"]),
         ),
         border_radius=radius["input"],
-        padding=spacing["sm"],
+        padding=spacing["md"],
         content=ft.Column(
             controls=[
                 ft.Text(
                     value=title,
-                    size=typography["body"]["max_size"],
+                    size=typography["subtitle"]["min_size"],
                     weight=ft.FontWeight.W_600,
                     color=colors["text_primary"],
                 ),
-                ft.Column(controls=content, spacing=spacing["sm"]),
+                ft.Column(controls=content, spacing=spacing["xs"]),
             ],
             spacing=spacing["sm"],
         ),
@@ -260,7 +370,11 @@ def build_weekly_program_page() -> ft.Control:
     typography = THEME_TOKENS["typography"]
     spacing = THEME_TOKENS["spacing"]
     selected_slot_state = {"value": next(iter(STATIC_LESSON_SLOTS.keys()))}
+    focused_slot_state = {"value": selected_slot_state["value"]}
+    hovered_lesson_slot_state = {"value": None}
+    hovered_empty_slot_state = {"value": None}
     lesson_slot_refs: dict[tuple[int, int], ft.Container] = {}
+    empty_slot_refs: dict[tuple[int, int], ft.Container] = {}
 
     student_value = ft.Text(
         value="-",
@@ -315,7 +429,7 @@ def build_weekly_program_page() -> ft.Control:
             ft.Text("Ilerleme", size=typography["small"]["max_size"], color=colors["text_secondary"]),
             progress_value,
             ft.Text("Durum", size=typography["small"]["max_size"], color=colors["text_secondary"]),
-            status_badge_container,
+            ft.Container(alignment=ft.Alignment(-1, 0), content=status_badge_container),
         ],
     )
 
@@ -336,7 +450,7 @@ def build_weekly_program_page() -> ft.Control:
                 academic_group,
                 notes_group,
             ],
-            spacing=spacing["sm"],
+            spacing=spacing["md"],
         ),
     )
 
@@ -351,46 +465,139 @@ def build_weekly_program_page() -> ft.Control:
             variant=lesson_data["status_variant"],
         )
 
+    def _apply_interaction_styles() -> None:
         for item_key, lesson_container in lesson_slot_refs.items():
+            is_selected = item_key == selected_slot_state["value"]
+            is_focused = item_key == focused_slot_state["value"]
+            is_hovered = item_key == hovered_lesson_slot_state["value"]
+
+            border_color = colors["background"]
+            bg_color = colors["surface"]
+            shadow = None
+
+            if is_hovered:
+                border_color = _with_alpha(colors["primary"], "80")
+                bg_color = _with_alpha(colors["primary"], "08")
+                shadow = THEME_TOKENS["shadows"]["card"]
+
+            if is_focused:
+                border_color = colors["secondary"]
+
+            if is_selected:
+                border_color = colors["primary"]
+                bg_color = _with_alpha(colors["primary"], "12")
+                shadow = THEME_TOKENS["shadows"]["card"]
+
+            lesson_container.bgcolor = bg_color
+            lesson_container.shadow = shadow
+            lesson_container.scale = 1.01 if is_hovered or is_selected else 1.0
             lesson_container.border = ft.Border(
-                top=ft.BorderSide(2, colors["primary"] if item_key == slot_key else colors["background"]),
-                right=ft.BorderSide(2, colors["primary"] if item_key == slot_key else colors["background"]),
-                bottom=ft.BorderSide(2, colors["primary"] if item_key == slot_key else colors["background"]),
-                left=ft.BorderSide(2, colors["primary"] if item_key == slot_key else colors["background"]),
+                top=ft.BorderSide(2, border_color),
+                right=ft.BorderSide(2, border_color),
+                bottom=ft.BorderSide(2, border_color),
+                left=ft.BorderSide(2, border_color),
             )
+
+        for item_key, empty_container in empty_slot_refs.items():
+            is_selected = item_key == selected_slot_state["value"]
+            is_focused = item_key == focused_slot_state["value"]
+            is_hovered = item_key == hovered_empty_slot_state["value"]
+
+            border_color = colors["border_neutral"]
+            border_width = 1
+
+            if is_hovered:
+                border_color = colors["secondary"]
+
+            if is_focused:
+                border_color = colors["secondary"]
+                border_width = 2
+
+            if is_selected:
+                border_color = colors["primary"]
+                border_width = 2
+
+            empty_container.bgcolor = _with_alpha(colors["surface"], "CC") if is_hovered else colors["background"]
+            empty_container.border = ft.Border(
+                top=ft.BorderSide(border_width, border_color),
+                right=ft.BorderSide(border_width, border_color),
+                bottom=ft.BorderSide(border_width, border_color),
+                left=ft.BorderSide(border_width, border_color),
+            )
+
+            if isinstance(empty_container.content, ft.Row) and empty_container.content.controls:
+                plus_control = empty_container.content.controls[0]
+                if isinstance(plus_control, ft.Text):
+                    plus_control.color = colors["secondary"] if is_hovered else colors["text_secondary"]
 
     def _on_lesson_select(slot_key: tuple[int, int], e: ft.ControlEvent) -> None:
         selected_slot_state["value"] = slot_key
+        focused_slot_state["value"] = slot_key
         _apply_selected_lesson(slot_key)
+        _apply_interaction_styles()
+        e.page.update()
+
+    def _on_lesson_hover(slot_key: tuple[int, int], e) -> None:
+        hovered_lesson_slot_state["value"] = slot_key if str(e.data).lower() == "true" else None
+        _apply_interaction_styles()
+        e.page.update()
+
+    def _on_empty_hover(slot_key: tuple[int, int], e) -> None:
+        hovered_empty_slot_state["value"] = slot_key if str(e.data).lower() == "true" else None
+        _apply_interaction_styles()
+        e.page.update()
+
+    def _on_slot_focus(slot_key: tuple[int, int], e) -> None:
+        focused_slot_state["value"] = slot_key
+        _apply_interaction_styles()
         e.page.update()
 
     schedule_grid = _build_schedule_grid(
         selected_slot_key=selected_slot_state["value"],
+        focused_slot_key=focused_slot_state["value"],
+        hovered_lesson_slot_key=hovered_lesson_slot_state["value"],
+        hovered_empty_slot_key=hovered_empty_slot_state["value"],
         on_select=_on_lesson_select,
+        on_lesson_hover=_on_lesson_hover,
+        on_empty_hover=_on_empty_hover,
+        on_focus=_on_slot_focus,
         lesson_slot_refs=lesson_slot_refs,
+        empty_slot_refs=empty_slot_refs,
     )
     _apply_selected_lesson(selected_slot_state["value"])
+    _apply_interaction_styles()
 
-    top_section = ft.Row(
+    top_section = ft.ResponsiveRow(
+        columns=12,
         controls=[
-            ft.Container(expand=4, content=schedule_grid),
-            ft.Container(expand=2, content=detail_panel),
+            ft.Container(
+                col={"xs": 12, "sm": 12, "md": 12, "lg": 8, "xl": 8, "xxl": 8},
+                content=schedule_grid,
+            ),
+            ft.Container(
+                col={"xs": 12, "sm": 12, "md": 12, "lg": 4, "xl": 4, "xxl": 4},
+                content=detail_panel,
+            ),
         ],
         spacing=spacing["md"],
+        run_spacing=spacing["md"],
         vertical_alignment=ft.CrossAxisAlignment.START,
     )
 
-    summary_section = ft.Row(
+    summary_section = ft.ResponsiveRow(
+        columns=12,
         controls=[
-            _build_summary_card("Toplam Ders", "0"),
-            _build_summary_card("Bos Saat", "0"),
-            _build_summary_card("Haftalik Sure", "0 dk"),
+            ft.Container(col={"xs": 12, "sm": 12, "md": 6, "lg": 4, "xl": 4}, content=_build_summary_card("Toplam Ders", "0")),
+            ft.Container(col={"xs": 12, "sm": 12, "md": 6, "lg": 4, "xl": 4}, content=_build_summary_card("Bos Saat", "0")),
+            ft.Container(col={"xs": 12, "sm": 12, "md": 12, "lg": 4, "xl": 4}, content=_build_summary_card("Haftalik Sure", "0 dk")),
         ],
         spacing=spacing["md"],
+        run_spacing=spacing["md"],
     )
 
     return ft.Column(
         controls=[top_section, summary_section],
         spacing=spacing["md"],
+        scroll=ft.ScrollMode.AUTO,
         expand=True,
     )

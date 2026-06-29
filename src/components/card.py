@@ -39,6 +39,8 @@ def build_card(
                 size=typography["small"]["max_size"],
                 weight=ft.FontWeight.W_400,
                 color=colors["text_secondary"],
+                max_lines=2,
+                overflow=ft.TextOverflow.ELLIPSIS,
             )
         )
 
@@ -116,6 +118,7 @@ def build_lesson_card(
                             ),
                         ),
                         ft.Container(
+                            alignment=ft.Alignment(1, 0),
                             content=build_badge(text=status_text, variant=status_variant),
                         ),
                     ],
@@ -123,26 +126,59 @@ def build_lesson_card(
                     vertical_alignment=ft.CrossAxisAlignment.CENTER,
                     spacing=spacing["sm"],
                 ),
-                ft.Text(
-                    value=f"Sinif: {class_name}",
-                    size=typography["small"]["max_size"],
-                    weight=ft.FontWeight.W_600,
-                    color=colors["text_secondary"],
+                ft.Row(
+                    controls=[
+                        ft.Text(
+                            value="Sinif",
+                            size=typography["small"]["max_size"],
+                            weight=ft.FontWeight.W_400,
+                            color=colors["text_secondary"],
+                        ),
+                        ft.Text(
+                            value=class_name,
+                            size=typography["small"]["max_size"],
+                            weight=ft.FontWeight.W_600,
+                            color=colors["text_primary"],
+                        ),
+                    ],
+                    alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
                 ),
-                ft.Text(
-                    value=f"Kur No: {level_no}",
-                    size=typography["small"]["max_size"],
-                    weight=ft.FontWeight.W_600,
-                    color=colors["text_secondary"],
+                ft.Row(
+                    controls=[
+                        ft.Text(
+                            value="Kur No",
+                            size=typography["small"]["max_size"],
+                            weight=ft.FontWeight.W_400,
+                            color=colors["text_secondary"],
+                        ),
+                        ft.Text(
+                            value=level_no,
+                            size=typography["small"]["max_size"],
+                            weight=ft.FontWeight.W_600,
+                            color=colors["text_primary"],
+                        ),
+                    ],
+                    alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
                 ),
-                ft.Text(
-                    value=f"Ilerleme: {progress_text}",
-                    size=typography["small"]["max_size"],
-                    weight=ft.FontWeight.W_600,
-                    color=colors["text_primary"],
+                ft.Row(
+                    controls=[
+                        ft.Text(
+                            value="Ilerleme",
+                            size=typography["small"]["max_size"],
+                            weight=ft.FontWeight.W_400,
+                            color=colors["text_secondary"],
+                        ),
+                        ft.Text(
+                            value=progress_text,
+                            size=typography["small"]["max_size"],
+                            weight=ft.FontWeight.W_600,
+                            color=colors["text_primary"],
+                        ),
+                    ],
+                    alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
                 ),
             ],
-            spacing=spacing["xs"],
+            spacing=spacing["sm"],
             tight=True,
             horizontal_alignment=ft.CrossAxisAlignment.START,
             alignment=ft.MainAxisAlignment.CENTER,
