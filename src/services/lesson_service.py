@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
+from datetime import datetime
 from typing import Any
 
 from repositories.course_repository import CourseRepository
@@ -52,6 +53,10 @@ class LessonService(BaseService):
     def list_students(self, limit: int = 200, offset: int = 0):
         return self.get_repository("student").list_all(limit, offset)
 
+    def student_exists(self, student_id: int) -> bool:
+        student = self.get_repository("student").get_by_id(student_id)
+        return bool(student)
+
     def list_courses(self, student_id: int | None = None, limit: int = 200, offset: int = 0):
         records = self.get_repository("course").list_all(limit, offset)
         if student_id is None:
@@ -81,7 +86,90 @@ class LessonService(BaseService):
         if not isinstance(data, Mapping):
             raise ValueError("lesson data must be a mapping")
 
-        return data
+        student_id = self._require_positive_int(data.get("student_id"), "student")
+        course_id = self._require_positive_int(data.get("course_id"), "course")
+        lesson_no = self._require_positive_int(data.get("lesson_no"), "lesson_no")
+        word_count = self._require_positive_int(data.get("word_count"), "word_count")
+        duration = self._require_positive_float(data.get("duration"), "duration")
+        comprehension = self._require_float_in_range(data.get("comprehension"), "comprehension", 0.0, 100.0)
+
+        if not self.student_exists(student_id):
+            raise ValueError("student not found")
+
+        if not self.is_course_available_for_student(student_id, course_id):
+            raise ValueError("selected course does not belong to selected student")
+
+        if lesson_no > 16:
+            raise ValueError("lesson_no must be between 1 and 16")
+
+        date_value = str(data.get("tarih") or "").strip()
+        if not date_value:
+            raise ValueError("lesson_date is required")
+        self._validate_iso_date(date_value)
+
+        note = (
+            f"Ogrenci: {self._student_label(student_id)} | "
+            f"Kelime: {word_count} | "
+            f"Sure: {duration} | "
+            f"Anlama: {comprehension}"
+        )
+
+        validated_payload: dict[str, Any] = {
+            "course_id": course_id,
+            "lesson_no": lesson_no,
+            "tarih": date_value,
+            "metin": str(data.get("metin") or "").strip() or None,
+            "ogretmen_notu": note,
+            "durum": str(data.get("durum") or "Planlandi").strip() or "Planlandi",
+        }
+
+        return validated_payload
+
+    def _student_label(self, student_id: int) -> str:
+        student = self.get_repository("student").get_by_id(student_id)
+        if not student:
+            return str(student_id)
+        return str(student.get("ad_soyad") or student_id)
+
+    @staticmethod
+    def _validate_iso_date(value: str) -> None:
+        try:
+            datetime.strptime(value, "%Y-%m-%d")
+        except ValueError as exc:
+            raise ValueError("lesson_date must be YYYY-MM-DD") from exc
+
+    @staticmethod
+    def _require_positive_int(value: Any, field_name: str) -> int:
+        try:
+            parsed = int(str(value).strip())
+        except (TypeError, ValueError) as exc:
+            raise ValueError(f"{field_name} is required") from exc
+
+        if parsed <= 0:
+            raise ValueError(f"{field_name} must be positive")
+        return parsed
+
+    @staticmethod
+    def _require_positive_float(value: Any, field_name: str) -> float:
+        try:
+            parsed = float(str(value).strip())
+        except (TypeError, ValueError) as exc:
+            raise ValueError(f"{field_name} is required") from exc
+
+        if parsed <= 0:
+            raise ValueError(f"{field_name} must be positive")
+        return parsed
+
+    @staticmethod
+    def _require_float_in_range(value: Any, field_name: str, min_value: float, max_value: float) -> float:
+        try:
+            parsed = float(str(value).strip())
+        except (TypeError, ValueError) as exc:
+            raise ValueError(f"{field_name} is required") from exc
+
+        if not (min_value <= parsed <= max_value):
+            raise ValueError(f"{field_name} must be between {min_value:g} and {max_value:g}")
+        return parsed
 
     # Business Operations
     # Epic 4.1B scope: intentionally left empty.

@@ -54,20 +54,20 @@ def build_lesson_records_page() -> ft.Control:
 
         return True, student_id, course_id
 
-    def payload() -> dict[str, str]:
+    def payload(lesson_no_override: int | None = None) -> dict[str, str]:
         _, student_id, course_id = _validate_before_save()
-        next_lesson_no = controller.suggest_next_lesson_no(int(course_id or 0))
+        resolved_lesson_no = lesson_no_override
+        if resolved_lesson_no is None:
+            resolved_lesson_no = controller.suggest_next_lesson_no(int(course_id or 0))
         return {
+            "student_id": str(student_id or ""),
             "course_id": str(course_id or ""),
-            "lesson_no": str(next_lesson_no),
+            "lesson_no": str(resolved_lesson_no),
             "tarih": (date_field.value or "").strip(),
             "metin": (text_field.value or "").strip(),
-            "ogretmen_notu": (
-                f"Ogrenci ID: {student_id or ''} | "
-                f"Kelime: {(word_count_field.value or '').strip()} | "
-                f"Sure: {(duration_field.value or '').strip()} | "
-                f"Anlama: {(comprehension_field.value or '').strip()}"
-            ),
+            "word_count": (word_count_field.value or "").strip(),
+            "duration": (duration_field.value or "").strip(),
+            "comprehension": (comprehension_field.value or "").strip(),
             "durum": "Planlandi",
         }
 
@@ -145,6 +145,15 @@ def build_lesson_records_page() -> ft.Control:
                 result_text.value = "Hata: Kayit bulunamadi."
                 e.page.update()
                 return
+
+            course_records = controller.list_courses(limit=500, offset=0)
+            matched_course = next(
+                (item for item in course_records if int(item.get("id", 0)) == int(record.get("course_id", 0))),
+                None,
+            )
+            if matched_course:
+                student_dropdown.value = str(matched_course.get("student_id"))
+                refresh_courses(int(matched_course.get("student_id")))
             course_dropdown.value = str(record.get("course_id"))
             date_field.value = str(record.get("tarih") or "")
             text_field.value = str(record.get("metin") or "")
@@ -179,14 +188,8 @@ def build_lesson_records_page() -> ft.Control:
 
         try:
             existing = controller.get_lesson(lesson_id) or {}
-            updated_payload = {
-                "course_id": str(course_id or ""),
-                "lesson_no": str(existing.get("lesson_no") or controller.suggest_next_lesson_no(int(course_id or 0))),
-                "tarih": (date_field.value or "").strip(),
-                "metin": (text_field.value or "").strip(),
-                "ogretmen_notu": existing.get("ogretmen_notu") or "",
-                "durum": existing.get("durum") or "Planlandi",
-            }
+            existing_lesson_no = int(existing.get("lesson_no") or controller.suggest_next_lesson_no(int(course_id or 0)))
+            updated_payload = payload(lesson_no_override=existing_lesson_no)
             updated = controller.update_lesson(lesson_id, updated_payload)
             result_text.value = f"Guncellendi: {updated}"
             refresh_lessons()
