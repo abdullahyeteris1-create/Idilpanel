@@ -165,7 +165,7 @@ def PasswordInput(
 
 def AppDropdown(
     label: str,
-    options: list[str],
+    options: list[str] | list[tuple[str, str]],
     value: str | None = None,
     required: bool = False,
     disabled: bool = False,
@@ -183,11 +183,19 @@ def AppDropdown(
     caption_type = typography["caption"]
     resolved_label = f"{label} *" if required else label
 
+    normalized_options: list[ft.dropdown.Option] = []
+    for option in options:
+        if isinstance(option, tuple):
+            key, text = option
+            normalized_options.append(ft.dropdown.Option(key=key, text=text))
+        else:
+            normalized_options.append(ft.dropdown.Option(option))
+
     return ft.Dropdown(
         value=value,
         label=resolved_label,
         hint_text=hint_text,
-        options=[ft.dropdown.Option(option) for option in options],
+        options=normalized_options,
         disabled=disabled,
         on_select=on_change,
         error_text=error_text,
@@ -245,13 +253,15 @@ def AppDatePicker(
     open_button = SecondaryButton(label="", icon=ft.Icons.CALENDAR_MONTH, on_click=_open_picker)
     open_button.width = 48
 
-    return ft.Row(
+    row = ft.Row(
         spacing=8,
         controls=[
             ft.Container(expand=True, content=date_field),
             open_button,
         ],
     )
+    row.data = {"field": date_field, "picker": date_picker}
+    return row
 
 
 def AppTextArea(
