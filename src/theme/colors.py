@@ -10,12 +10,14 @@ class ColorTokens:
     WARNING = "#F59E0B"
     DANGER = "#EF4444"
     PURPLE = "#8B5CF6"
+    PASSIVE = "#64748B"
     BACKGROUND = "#F8FAFC"
     SURFACE = "#FFFFFF"
+    BORDER = "#E2E8F0"
 
     TEXT_PRIMARY = "#0F172A"
     TEXT_SECONDARY = "#334155"
-    BORDER_NEUTRAL = "#E2E8F0"
+    BORDER_NEUTRAL = BORDER
 
 
 SEMANTIC_COLORS = {
@@ -25,9 +27,18 @@ SEMANTIC_COLORS = {
     "warning": ColorTokens.WARNING,
     "danger": ColorTokens.DANGER,
     "purple": ColorTokens.PURPLE,
+    "passive": ColorTokens.PASSIVE,
     "background": ColorTokens.BACKGROUND,
     "surface": ColorTokens.SURFACE,
+    "border": ColorTokens.BORDER,
     "text_primary": ColorTokens.TEXT_PRIMARY,
     "text_secondary": ColorTokens.TEXT_SECONDARY,
     "border_neutral": ColorTokens.BORDER_NEUTRAL,
+}
+
+
+STATUS_BADGE_TONES = {
+    "Aktif": ColorTokens.SUCCESS,
+    "Pasif": ColorTokens.WARNING,
+    "Tamamlandi": ColorTokens.PRIMARY,
 }

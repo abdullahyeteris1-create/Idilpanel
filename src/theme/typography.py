@@ -6,25 +6,25 @@ class TypographyTokens:
 
     FONT_FAMILY = "Poppins"
 
-    PAGE_TITLE_WEIGHT = 700
-    PAGE_TITLE_MIN = 28
-    PAGE_TITLE_MAX = 36
+    H1_WEIGHT = 700
+    H1_MIN = 32
+    H1_MAX = 36
 
-    CARD_TITLE_WEIGHT = 600
-    CARD_TITLE_MIN = 18
-    CARD_TITLE_MAX = 22
+    H2_WEIGHT = 700
+    H2_MIN = 24
+    H2_MAX = 28
 
-    SUBTITLE_WEIGHT = 600
-    SUBTITLE_MIN = 16
-    SUBTITLE_MAX = 20
+    H3_WEIGHT = 600
+    H3_MIN = 18
+    H3_MAX = 22
 
     BODY_WEIGHT = 400
     BODY_MIN = 14
     BODY_MAX = 16
 
-    SMALL_WEIGHT = 400
-    SMALL_MIN = 12
-    SMALL_MAX = 13
+    CAPTION_WEIGHT = 400
+    CAPTION_MIN = 12
+    CAPTION_MAX = 13
 
     BUTTON_WEIGHT = 600
     BUTTON_MIN = 14
@@ -32,34 +32,54 @@ class TypographyTokens:
 
 
 TYPE_SCALE = {
-    "page_title": {
-        "weight": TypographyTokens.PAGE_TITLE_WEIGHT,
-        "min_size": TypographyTokens.PAGE_TITLE_MIN,
-        "max_size": TypographyTokens.PAGE_TITLE_MAX,
+    "h1": {
+        "weight": TypographyTokens.H1_WEIGHT,
+        "min_size": TypographyTokens.H1_MIN,
+        "max_size": TypographyTokens.H1_MAX,
     },
-    "card_title": {
-        "weight": TypographyTokens.CARD_TITLE_WEIGHT,
-        "min_size": TypographyTokens.CARD_TITLE_MIN,
-        "max_size": TypographyTokens.CARD_TITLE_MAX,
+    "h2": {
+        "weight": TypographyTokens.H2_WEIGHT,
+        "min_size": TypographyTokens.H2_MIN,
+        "max_size": TypographyTokens.H2_MAX,
     },
-    "subtitle": {
-        "weight": TypographyTokens.SUBTITLE_WEIGHT,
-        "min_size": TypographyTokens.SUBTITLE_MIN,
-        "max_size": TypographyTokens.SUBTITLE_MAX,
+    "h3": {
+        "weight": TypographyTokens.H3_WEIGHT,
+        "min_size": TypographyTokens.H3_MIN,
+        "max_size": TypographyTokens.H3_MAX,
     },
     "body": {
         "weight": TypographyTokens.BODY_WEIGHT,
         "min_size": TypographyTokens.BODY_MIN,
         "max_size": TypographyTokens.BODY_MAX,
     },
-    "small": {
-        "weight": TypographyTokens.SMALL_WEIGHT,
-        "min_size": TypographyTokens.SMALL_MIN,
-        "max_size": TypographyTokens.SMALL_MAX,
+    "caption": {
+        "weight": TypographyTokens.CAPTION_WEIGHT,
+        "min_size": TypographyTokens.CAPTION_MIN,
+        "max_size": TypographyTokens.CAPTION_MAX,
     },
     "button": {
         "weight": TypographyTokens.BUTTON_WEIGHT,
         "min_size": TypographyTokens.BUTTON_MIN,
         "max_size": TypographyTokens.BUTTON_MAX,
+    },
+    "page_title": {
+        "weight": TypographyTokens.H1_WEIGHT,
+        "min_size": TypographyTokens.H1_MIN,
+        "max_size": TypographyTokens.H1_MAX,
+    },
+    "card_title": {
+        "weight": TypographyTokens.H3_WEIGHT,
+        "min_size": TypographyTokens.H3_MIN,
+        "max_size": TypographyTokens.H3_MAX,
+    },
+    "subtitle": {
+        "weight": TypographyTokens.H2_WEIGHT,
+        "min_size": TypographyTokens.H2_MIN,
+        "max_size": TypographyTokens.H2_MAX,
+    },
+    "small": {
+        "weight": TypographyTokens.CAPTION_WEIGHT,
+        "min_size": TypographyTokens.CAPTION_MIN,
+        "max_size": TypographyTokens.CAPTION_MAX,
     },
 }
