@@ -87,6 +87,7 @@ def build_students_page() -> ft.Control:
 
     page_info_text = ft.Text(value="Sayfa 1/1", color=colors["text_secondary"], size=15)
     total_info_text = ft.Text(value="Toplam 0 ogrenci", color=colors["text_secondary"], size=15)
+    page_chip_text = ft.Text("1", size=12, weight=ft.FontWeight.W_600, color=colors["primary"])
     students_list = ft.Column(spacing=24, scroll=ft.ScrollMode.AUTO, expand=True)
 
     def _date_value(date_control: ft.Control) -> str:
@@ -253,6 +254,15 @@ def build_students_page() -> ft.Control:
             content=ft.Text(status, size=12, weight=ft.FontWeight.W_600, color=fg),
         )
 
+    def _filter_tone(value: str) -> tuple[str, str]:
+        if value == "Aktif":
+            return "#DCFCE7", "#166534"
+        if value == "Pasif":
+            return "#FEF3C7", "#92400E"
+        if value == "Tamamlanan":
+            return "#DBEAFE", "#1E3A8A"
+        return "#EEF2FF", "#4338CA"
+
     def _build_student_card(record: dict) -> ft.Control:
         record_id = int(record.get("id", 0) or 0)
         status = _status_from_record(record)
@@ -364,22 +374,20 @@ def build_students_page() -> ft.Control:
 
     def _build_status_section(title: str, records: list[dict]) -> ft.Control:
         if not records:
-            return AppCard(
-                content=ft.Row(
-                    spacing=10,
+            return ft.Container(
+                padding=ft.Padding(0, 24, 0, 24),
+                alignment=ft.Alignment(0, 0),
+                content=ft.Column(
+                    horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                    spacing=8,
                     controls=[
-                        ft.Icon(ft.Icons.INBOX_OUTLINED, color=colors["text_secondary"]),
-                        ft.Column(
-                            spacing=2,
-                            controls=[
-                                ft.Text(f"{title} listesi bos", size=16, weight=ft.FontWeight.W_600, color=colors["text_primary"]),
-                                ft.Text("Bu bolumde henuz kayit bulunamadi.", color=colors["text_secondary"]),
-                            ],
-                        ),
+                        ft.Icon(ft.Icons.INBOX_OUTLINED, color=colors["text_secondary"], size=24),
+                        ft.Text(f"{title} listesi bos", size=16, weight=ft.FontWeight.W_600, color=colors["text_primary"]),
+                        ft.Text("Bu bolumde henuz kayit bulunamadi.", color=colors["text_secondary"]),
                     ],
-                )
+                ),
             )
-        return ft.Column(spacing=24, controls=[_build_student_card(record) for record in records])
+        return ft.Column(spacing=12, controls=[_build_student_card(record) for record in records])
 
     def refresh_list() -> None:
         records = controller.list_students(limit=100, offset=0)
@@ -418,23 +426,13 @@ def build_students_page() -> ft.Control:
         end = start + page_size
         paged_records = filtered_records[start:end]
         page_info_text.value = f"Sayfa {current_page}/{total_pages}"
+        page_chip_text.value = str(current_page)
 
-        active_records = [record for record in paged_records if _status_from_record(record) == "Aktif"]
-        passive_records = [record for record in paged_records if _status_from_record(record) == "Pasif"]
-        completed_records = [record for record in paged_records if _status_from_record(record) == "Tamamlandı"]
+        if not paged_records:
+            students_list.controls = [_build_status_section(active_filter["value"], [])]
+            return
 
-        sections: list[ft.Control] = []
-        if active_filter["value"] in {"Tumu", "Aktif"}:
-            sections.append(ft.Text("Aktif", size=16, weight=ft.FontWeight.W_600, color=colors["text_primary"]))
-            sections.append(_build_status_section("Aktif", active_records))
-        if active_filter["value"] in {"Tumu", "Pasif"}:
-            sections.append(ft.Text("Pasif", size=16, weight=ft.FontWeight.W_600, color=colors["text_primary"]))
-            sections.append(_build_status_section("Pasif", passive_records))
-        if active_filter["value"] in {"Tumu", "Tamamlanan"}:
-            sections.append(ft.Text("Tamamlanan", size=16, weight=ft.FontWeight.W_600, color=colors["text_primary"]))
-            sections.append(_build_status_section("Tamamlandı", completed_records))
-
-        students_list.controls = sections
+        students_list.controls = [_build_student_card(record) for record in paged_records]
 
     def _set_filter(filter_name: str) -> None:
         active_filter["value"] = filter_name
@@ -459,10 +457,41 @@ def build_students_page() -> ft.Control:
 
     def _filter_button(label: str, value: str) -> ft.Control:
         count = filter_counts.get(value, 0)
-        text = f"{label}  {count}"
-        if active_filter["value"] == value:
-            return PrimaryButton(text, on_click=lambda e: (_set_filter(value), e.page.update()))
-        return SecondaryButton(text, on_click=lambda e: (_set_filter(value), e.page.update()))
+        bg, fg = _filter_tone(value)
+        selected = active_filter["value"] == value
+        return ft.TextButton(
+            on_click=lambda e: (_set_filter(value), e.page.update()),
+            style=ft.ButtonStyle(
+                padding=ft.Padding(10, 0, 10, 0),
+                shape=ft.RoundedRectangleBorder(radius=999),
+                overlay_color=ft.Colors.TRANSPARENT,
+            ),
+            content=ft.Container(
+                height=30,
+                padding=ft.Padding(10, 0, 10, 0),
+                border_radius=999,
+                bgcolor=bg if selected else colors["surface"],
+                border=ft.Border(
+                    top=ft.BorderSide(1, bg if selected else colors["border"]),
+                    right=ft.BorderSide(1, bg if selected else colors["border"]),
+                    bottom=ft.BorderSide(1, bg if selected else colors["border"]),
+                    left=ft.BorderSide(1, bg if selected else colors["border"]),
+                ),
+                alignment=ft.Alignment(0, 0),
+                content=ft.Row(
+                    spacing=6,
+                    controls=[
+                        ft.Text(label, size=12, color=fg if selected else colors["text_secondary"], weight=ft.FontWeight.W_600),
+                        ft.Container(
+                            padding=ft.Padding(6, 1, 6, 1),
+                            border_radius=999,
+                            bgcolor=colors["surface"] if selected else f"{colors['primary']}14",
+                            content=ft.Text(str(count), size=11, color=fg if selected else colors["primary"], weight=ft.FontWeight.W_600),
+                        ),
+                    ],
+                ),
+            ),
+        )
 
     def _selected_student_id() -> int | None:
         selected = (student_dropdown.value or "").strip()
@@ -632,8 +661,16 @@ def build_students_page() -> ft.Control:
             ft.Row(
                 spacing=8,
                 controls=[
-                    SecondaryButton("Onceki", on_click=_go_prev_page, icon=ft.Icons.ARROW_BACK),
-                    SecondaryButton("Sonraki", on_click=_go_next_page, icon=ft.Icons.ARROW_FORWARD),
+                    SecondaryButton("", on_click=_go_prev_page, icon=ft.Icons.CHEVRON_LEFT),
+                    ft.Container(
+                        width=28,
+                        height=28,
+                        border_radius=8,
+                        alignment=ft.Alignment(0, 0),
+                        bgcolor="#EEF2FF",
+                        content=page_chip_text,
+                    ),
+                    SecondaryButton("", on_click=_go_next_page, icon=ft.Icons.CHEVRON_RIGHT),
                 ],
             ),
             ft.Column(
@@ -653,9 +690,8 @@ def build_students_page() -> ft.Control:
             expand=True,
             controls=[
                 list_filters,
+                AppCard(content=students_list),
                 list_footer,
-                ft.Divider(height=1, color=colors["border"]),
-                students_list,
             ],
         ),
     )
