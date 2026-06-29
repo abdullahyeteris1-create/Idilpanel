@@ -34,7 +34,8 @@ class CourseService(BaseService):
     # CRUD Operations
     def create_course(self, data):
         validated_data = self.validate_course(data)
-        return self.get_repository("course").create(validated_data)
+        repository_payload = self._to_repository_payload(validated_data)
+        return self.get_repository("course").create(repository_payload)
 
     def get_course(self, record_id):
         return self.get_repository("course").get_by_id(record_id)
@@ -44,7 +45,8 @@ class CourseService(BaseService):
 
     def update_course(self, record_id, data):
         validated_data = self.validate_course(data, current_course_id=record_id)
-        return self.get_repository("course").update(record_id, validated_data)
+        repository_payload = self._to_repository_payload(validated_data)
+        return self.get_repository("course").update(record_id, repository_payload)
 
     def delete_course(self, record_id):
         return self.get_repository("course").delete(record_id)
@@ -141,3 +143,36 @@ class CourseService(BaseService):
             return float(value)
         except ValueError as exc:
             raise ValueError(f"{field_label} must be a valid number") from exc
+
+    def _to_repository_payload(self, data: Mapping[str, Any]) -> dict[str, Any]:
+        payload: dict[str, Any] = {}
+
+        if "student_id" in data:
+            payload["student_id"] = data["student_id"]
+
+        level_value = self._get_field_value(data, self._LEVEL_FIELDS)
+        if level_value is not None and level_value:
+            payload["kur_no"] = self._parse_int(level_value, "course level")
+
+        start_date = data.get("baslangic")
+        if start_date is not None:
+            payload["baslangic"] = str(start_date).strip()
+
+        end_date = data.get("bitis")
+        if end_date is not None:
+            cleaned_end_date = str(end_date).strip()
+            if cleaned_end_date:
+                payload["bitis"] = cleaned_end_date
+
+        status_value = data.get("durum")
+        if status_value is not None:
+            payload["durum"] = str(status_value).strip()
+
+        duration_value = self._get_field_value(data, self._DURATION_FIELDS)
+        if duration_value is not None and duration_value:
+            payload["hedef_ders_sayisi"] = self._parse_int(duration_value, "course duration")
+
+        if "is_active" in data:
+            payload["is_active"] = data["is_active"]
+
+        return payload

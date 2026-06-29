@@ -4,6 +4,7 @@ from collections.abc import Callable
 
 import flet as ft
 
+from views.pages.courses import build_courses_page
 from views.pages.dashboard import build_dashboard_page
 from views.pages.lesson_records import build_lesson_records_page
 from views.pages.pdf import build_pdf_page
@@ -20,6 +21,7 @@ ROUTE_REGISTRY: dict[str, dict[str, str | RouteBuilder]] = {
     "/dashboard": {"title": "Dashboard", "builder": build_dashboard_page},
     "/weekly-program": {"title": "Haftalik Program", "builder": build_weekly_program_page},
     "/students": {"title": "Ogrenciler", "builder": build_students_page},
+    "/courses": {"title": "Kurslar", "builder": build_courses_page},
     "/lesson-records": {"title": "Ders Kayitlari", "builder": build_lesson_records_page},
     "/progress-reports": {"title": "Gelisim Raporlari", "builder": build_progress_reports_page},
     "/pdf": {"title": "PDF", "builder": build_pdf_page},

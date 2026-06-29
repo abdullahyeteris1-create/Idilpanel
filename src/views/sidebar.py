@@ -34,6 +34,7 @@ def build_sidebar(
         ("/dashboard", ft.Icons.DASHBOARD, "Dashboard"),
         ("/weekly-program", ft.Icons.CALENDAR_MONTH, "Haftalik Program"),
         ("/students", ft.Icons.GROUP, "Ogrenciler"),
+        ("/courses", ft.Icons.MENU_BOOK, "Kurslar"),
         ("/lesson-records", ft.Icons.SCHOOL, "Ders Kayitlari"),
         ("/progress-reports", ft.Icons.INSERT_CHART, "Gelisim Raporlari"),
         ("/pdf", ft.Icons.PICTURE_AS_PDF, "PDF"),
