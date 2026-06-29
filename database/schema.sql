@@ -138,38 +138,6 @@ CREATE TABLE reports (
     FOREIGN KEY (course_id) REFERENCES courses(id)
 );
 
--- 7) report_items
--- Bridge table for many-to-many relation between reports and lessons.
-CREATE TABLE report_items (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    report_id INTEGER NOT NULL,
-    lesson_id INTEGER NOT NULL,
-    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    is_active INTEGER NOT NULL DEFAULT 1
-        CHECK (is_active IN (0, 1)),
-    deleted_at TEXT DEFAULT NULL,
-    UNIQUE (report_id, lesson_id, is_active),
-    FOREIGN KEY (report_id) REFERENCES reports(id),
-    FOREIGN KEY (lesson_id) REFERENCES lessons(id)
-);
-
--- 8) settings
--- Application-level key/value settings.
-CREATE TABLE settings (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    ayar_anahtari TEXT NOT NULL,
-    ayar_degeri TEXT NOT NULL,
-    kategori TEXT,
-    aciklama TEXT,
-    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    is_active INTEGER NOT NULL DEFAULT 1
-        CHECK (is_active IN (0, 1)),
-    deleted_at TEXT DEFAULT NULL,
-    UNIQUE (ayar_anahtari, is_active)
-);
-
 -- Indexes
 CREATE INDEX idx_students_ad_soyad ON students(ad_soyad);
 CREATE INDEX idx_students_durum ON students(durum);
@@ -188,8 +156,3 @@ CREATE INDEX idx_measurements_lesson_id ON measurements(lesson_id);
 
 CREATE INDEX idx_reports_student_created_at ON reports(student_id, created_at);
 CREATE INDEX idx_reports_rapor_tipi ON reports(rapor_tipi);
-
-CREATE INDEX idx_report_items_report_id ON report_items(report_id);
-CREATE INDEX idx_report_items_lesson_id ON report_items(lesson_id);
-
-CREATE INDEX idx_settings_anahtar ON settings(ayar_anahtari);
