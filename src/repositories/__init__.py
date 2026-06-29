@@ -9,11 +9,11 @@ from .schedule_repository import ScheduleRepository
 from .student_repository import StudentRepository
 
 __all__ = [
-	"BaseRepository",
-	"StudentRepository",
-	"CourseRepository",
-	"ScheduleRepository",
-	"LessonRepository",
-	"MeasurementRepository",
-	"ReportRepository",
+    "BaseRepository",
+    "StudentRepository",
+    "CourseRepository",
+    "ScheduleRepository",
+    "LessonRepository",
+    "MeasurementRepository",
+    "ReportRepository",
 ]
