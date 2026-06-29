@@ -626,7 +626,19 @@ def build_weekly_program_page() -> ft.Control:
     )
 
     return ft.Column(
-        controls=[top_section, summary_section],
+        controls=[
+            ft.Row(
+                controls=[
+                    ft.ElevatedButton(
+                        "Dersi Ac",
+                        on_click=lambda e: e.page.go("/lesson-records"),
+                    )
+                ],
+                alignment=ft.MainAxisAlignment.END,
+            ),
+            top_section,
+            summary_section,
+        ],
         spacing=spacing["md"],
         scroll=ft.ScrollMode.AUTO,
         expand=True,
