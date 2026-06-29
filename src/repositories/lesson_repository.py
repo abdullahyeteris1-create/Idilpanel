@@ -8,8 +8,8 @@ from .base_repository import BaseRepository
 class LessonRepository(BaseRepository):
     """Repository entry point for lessons table access."""
 
-    table_name = "lessons"
-    id_column = "id"
+    table_name: str = "lessons"
+    id_column: str = "id"
 
     def create(self, data):
         return self._insert_from_mapping(self.table_name, data)
