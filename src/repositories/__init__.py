@@ -2,7 +2,14 @@
 
 from .base_repository import BaseRepository
 from .course_repository import CourseRepository
+from .lesson_repository import LessonRepository
 from .schedule_repository import ScheduleRepository
 from .student_repository import StudentRepository
 
-__all__ = ["BaseRepository", "StudentRepository", "CourseRepository", "ScheduleRepository"]
+__all__ = [
+	"BaseRepository",
+	"StudentRepository",
+	"CourseRepository",
+	"ScheduleRepository",
+	"LessonRepository",
+]
