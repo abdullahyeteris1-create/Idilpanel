@@ -12,6 +12,8 @@ class SpacingTokens:
     S24 = 24
     S32 = 32
     S40 = 40
+    S48 = 48
+    S64 = 64
 
     XS = S4
     SM = S8
@@ -19,6 +21,8 @@ class SpacingTokens:
     CARD = S20
     LG = S24
     XL = S32
+    XXL = S48
+    XXXL = S64
 
 
 SPACING_SCALE = {
@@ -30,10 +34,14 @@ SPACING_SCALE = {
     "24": SpacingTokens.S24,
     "32": SpacingTokens.S32,
     "40": SpacingTokens.S40,
+    "48": SpacingTokens.S48,
+    "64": SpacingTokens.S64,
     "xs": SpacingTokens.XS,
     "sm": SpacingTokens.SM,
     "md": SpacingTokens.MD,
     "card": SpacingTokens.CARD,
     "lg": SpacingTokens.LG,
     "xl": SpacingTokens.XL,
+    "xxl": SpacingTokens.XXL,
+    "xxxl": SpacingTokens.XXXL,
 }

@@ -18,8 +18,15 @@ class StudentService(BaseService):
     _FIRST_NAME_FIELDS = ("first_name", "ad")
     _LAST_NAME_FIELDS = ("last_name", "soyad")
     _CLASS_FIELDS = ("class_name", "class", "sinif")
-    _COURSE_FIELDS = ("course_id", "kurs_id", "course", "kurs")
     _START_DATE_FIELDS = ("start_date", "baslangic_tarihi")
+    _END_DATE_FIELDS = ("end_date", "bitis_tarihi")
+    _PARENT_NAME_FIELDS = ("parent_name", "veli_adi")
+    _PHONE_FIELDS = ("phone", "telefon")
+    _EMAIL_FIELDS = ("email", "eposta")
+    _USERNAME_FIELDS = ("username", "kullanici_adi")
+    _PASSWORD_FIELDS = ("password", "sifre")
+    _STATUS_FIELDS = ("status", "durum")
+    _NOTES_FIELDS = ("notes", "notlar")
 
     def __init__(
         self,
@@ -79,15 +86,26 @@ class StudentService(BaseService):
         if class_value is None or not class_value:
             raise ValueError("student class information cannot be empty")
 
-        course_value = self._get_field_value(data, self._COURSE_FIELDS)
-        if course_value is None or not course_value:
-            raise ValueError("student must be assigned to a course")
-
         start_date_value = self._get_field_value(data, self._START_DATE_FIELDS)
         if start_date_value is None or not start_date_value:
             raise ValueError("student start date cannot be empty")
 
-        self._parse_date(start_date_value)
+        start_date = self._parse_date(start_date_value)
+
+        end_date_value = self._get_field_value(data, self._END_DATE_FIELDS)
+        if end_date_value:
+            end_date = self._parse_date(end_date_value, "student end date must be a valid date")
+            if end_date < start_date:
+                raise ValueError("student end date cannot be before start date")
+
+        email_value = self._get_field_value(data, self._EMAIL_FIELDS)
+        if email_value and "@" not in email_value:
+            raise ValueError("student email must be valid")
+
+        status_value = self._get_field_value(data, self._STATUS_FIELDS)
+        if status_value and status_value not in {"Aktif", "Beklemede"}:
+            raise ValueError("student status must be Aktif or Beklemede")
+
         return data
 
     def _get_field_value(self, data: Mapping[str, Any], field_names: tuple[str, ...]) -> str | None:
@@ -101,7 +119,7 @@ class StudentService(BaseService):
                 return text
         return None
 
-    def _parse_date(self, value: Any) -> date:
+    def _parse_date(self, value: Any, error_message: str = "student start date must be a valid date") -> date:
         if isinstance(value, date):
             return value
 
@@ -109,7 +127,7 @@ class StudentService(BaseService):
             return value.date()
 
         if not isinstance(value, str):
-            raise ValueError("student start date must be a valid date")
+            raise ValueError(error_message)
 
         cleaned_value = value.strip()
         try:
@@ -118,7 +136,7 @@ class StudentService(BaseService):
             try:
                 return datetime.fromisoformat(cleaned_value).date()
             except ValueError as second_error:
-                raise ValueError("student start date must be a valid date") from second_error
+                raise ValueError(error_message) from second_error
 
     def _to_repository_payload(self, data: Mapping[str, Any]) -> dict[str, Any]:
         payload: dict[str, Any] = {}
@@ -134,5 +152,38 @@ class StudentService(BaseService):
         start_date_value = self._get_field_value(data, self._START_DATE_FIELDS)
         if start_date_value is not None:
             payload["baslangic_tarihi"] = start_date_value
+
+        parent_name_value = self._get_field_value(data, self._PARENT_NAME_FIELDS)
+        if parent_name_value is not None:
+            payload["veli_adi"] = parent_name_value
+
+        phone_value = self._get_field_value(data, self._PHONE_FIELDS)
+        if phone_value is not None:
+            payload["telefon"] = phone_value
+
+        email_value = self._get_field_value(data, self._EMAIL_FIELDS)
+        if email_value is not None:
+            payload["email"] = email_value
+            payload["eposta"] = email_value
+
+        username_value = self._get_field_value(data, self._USERNAME_FIELDS)
+        if username_value is not None:
+            payload["kullanici_adi"] = username_value
+
+        password_value = self._get_field_value(data, self._PASSWORD_FIELDS)
+        if password_value is not None:
+            payload["sifre"] = password_value
+
+        end_date_value = self._get_field_value(data, self._END_DATE_FIELDS)
+        if end_date_value is not None:
+            payload["bitis_tarihi"] = end_date_value
+
+        status_value = self._get_field_value(data, self._STATUS_FIELDS)
+        if status_value is not None:
+            payload["durum"] = status_value
+
+        notes_value = self._get_field_value(data, self._NOTES_FIELDS)
+        if notes_value is not None:
+            payload["notlar"] = notes_value
 
         return payload

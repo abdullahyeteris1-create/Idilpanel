@@ -9,6 +9,8 @@ BADGE_VARIANTS = {
     "primary": "primary",
     "secondary": "secondary",
     "success": "success",
+    "passive": "passive",
+    "completed": "purple",
     "warning": "warning",
     "danger": "danger",
     "purple": "purple",

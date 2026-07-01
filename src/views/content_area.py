@@ -26,5 +26,8 @@ def build_content_area(content: ft.Control | None = None) -> ft.Container:
             right=spacing["lg"],
             bottom=spacing["lg"],
         ),
-        content=content or placeholder,
+        content=ft.Container(
+            expand=True,
+            content=content or placeholder,
+        ),
     )

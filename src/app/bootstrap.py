@@ -1,4 +1,5 @@
 import flet as ft
+import traceback
 
 from theme.theme import IdilTheme
 from views.layout import AppLayoutShell
@@ -11,6 +12,26 @@ def configure_app(page: ft.Page) -> None:
     page.padding = 0
     page.clean()
     IdilTheme.apply_to_page(page)
+
+    # Add error handler for page events
+    def on_page_error(error: Exception) -> None:
+        """Log any page-level errors."""
+        tb = traceback.format_exc()
+        with open('debug_page_error.log', 'a', encoding='utf-8') as f:
+            f.write("="*70 + "\n")
+            f.write(f"PAGE ERROR: {type(error).__name__}\n")
+            f.write("="*70 + "\n")
+            f.write(f"{error}\n")
+            f.write(tb)
+            f.write("\n")
+        print("\n" + "="*70)
+        print(f"PAGE ERROR: {type(error).__name__}")
+        print("="*70)
+        print(f"{error}")
+        print(tb)
+        print("="*70 + "\n")
+
+    page.on_error = on_page_error
 
     def navigate(route: str) -> None:
         if page.route != route:

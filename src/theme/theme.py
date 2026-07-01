@@ -2,7 +2,7 @@
 
 import flet as ft
 
-from .colors import ColorTokens, SEMANTIC_COLORS
+from .colors import ColorTokens, SEMANTIC_COLORS, STATUS_BADGE_TONES
 from .radius import RADIUS_SCALE
 from .shadows import SHADOWS
 from .spacing import SPACING_SCALE
@@ -30,6 +30,7 @@ class IdilTheme:
 
 THEME_TOKENS = {
     "colors": SEMANTIC_COLORS,
+    "status_badges": STATUS_BADGE_TONES,
     "typography": TYPE_SCALE,
     "spacing": SPACING_SCALE,
     "radius": RADIUS_SCALE,

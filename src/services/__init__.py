@@ -3,7 +3,15 @@
 from .base_service import BaseService
 from .course_service import CourseService
 from .lesson_service import LessonService
+from .measurement_service import MeasurementService
 from .schedule_service import ScheduleService
 from .student_service import StudentService
 
-__all__ = ["BaseService", "StudentService", "CourseService", "ScheduleService", "LessonService"]
+__all__ = [
+	"BaseService",
+	"StudentService",
+	"CourseService",
+	"ScheduleService",
+	"LessonService",
+	"MeasurementService",
+]

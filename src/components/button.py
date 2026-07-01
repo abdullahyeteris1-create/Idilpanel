@@ -18,6 +18,8 @@ BUTTON_VARIANTS = {
 
 def _button_colors(variant: str) -> tuple[str, str]:
     colors = THEME_TOKENS["colors"]
+    if variant == BUTTON_VARIANTS["secondary"]:
+        return colors["surface"], colors["text_secondary"]
     background = colors.get(variant, colors["primary"])
     return background, colors["surface"]
 
@@ -39,6 +41,7 @@ def build_button(
     bgcolor, text_color = _button_colors(variant)
 
     return ft.ElevatedButton(
+        height=48,
         content=ft.Text(value=label),
         icon=icon,
         on_click=on_click,
@@ -47,6 +50,11 @@ def build_button(
         style=ft.ButtonStyle(
             bgcolor=bgcolor,
             color=text_color,
+            elevation={
+                ft.ControlState.DEFAULT: 0,
+                ft.ControlState.HOVERED: 2,
+                ft.ControlState.PRESSED: 1,
+            },
             shape=ft.RoundedRectangleBorder(radius=radius["button"]),
             text_style=ft.TextStyle(
                 size=typography["max_size"],

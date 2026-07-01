@@ -1,4 +1,8 @@
-"""Students page with end-to-end Student module integration."""
+"""LEGACY Students page.
+
+Canonical Students page: views.pages.students_v3.build_students_v3_page.
+This module is retained for reference only and must not receive new feature work.
+"""
 
 from __future__ import annotations
 
@@ -21,6 +25,10 @@ from controllers.student_controller import StudentController
 from repositories.student_repository import StudentRepository
 from services.student_service import StudentService
 from theme.theme import THEME_TOKENS
+
+
+IS_LEGACY_STUDENTS_PAGE = True
+CANONICAL_STUDENTS_MODULE = "views.pages.students_v3"
 
 
 def _build_student_controller() -> StudentController:

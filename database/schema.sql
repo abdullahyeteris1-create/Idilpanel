@@ -13,7 +13,11 @@ CREATE TABLE students (
     veli_adi TEXT,
     telefon TEXT,
     eposta TEXT,
+    email TEXT,
+    kullanici_adi TEXT,
+    sifre TEXT,
     baslangic_tarihi TEXT NOT NULL,
+    bitis_tarihi TEXT,
     durum TEXT NOT NULL DEFAULT 'Aktif'
         CHECK (durum IN ('Aktif', 'Beklemede')),
     notlar TEXT,

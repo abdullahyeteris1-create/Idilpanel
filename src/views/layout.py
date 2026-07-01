@@ -3,6 +3,7 @@
 import flet as ft
 
 from theme.theme import THEME_TOKENS
+from views.app_layout import build_app_layout
 from views.content_area import build_content_area
 from views.router import build_route_content, get_page_title
 from views.sidebar import build_sidebar
@@ -26,35 +27,25 @@ class AppLayoutShell:
         self.route = route
 
     def build(self) -> ft.Control:
-        """Create a responsive desktop-first layout structure."""
+        """Create a responsive desktop-first layout structure using AppLayout."""
         width = self.page.width or DESKTOP_BREAKPOINT
 
-        topbar = build_topbar(get_page_title(self.route))
-        content_area = build_content_area(build_route_content(self.route))
+        # Build route content (what to display)
+        route_content = build_route_content(self.route)
+        
+        # Get page title for topbar
+        page_title = get_page_title(self.route)
+        
+        # Wrap content in content area (adds padding and background)
+        content_area = build_content_area(route_content)
 
-        main_column = ft.Column(
-            controls=[topbar, content_area],
-            spacing=0,
-            expand=True,
-        )
-
-        if width < TABLET_BREAKPOINT:
-            return main_column
-
-        compact_sidebar = width < DESKTOP_BREAKPOINT
-
-        return ft.Row(
-            spacing=0,
-            expand=True,
-            controls=[
-                build_sidebar(
-                    active_route=self.route,
-                    on_navigate=self.on_navigate,
-                    compact=compact_sidebar,
-                ),
-                ft.VerticalDivider(width=1, color=THEME_TOKENS["colors"]["border_neutral"]),
-                ft.Container(padding=ft.Padding(0, 0, 0, 0), expand=True, content=main_column),
-            ],
+        # Use unified AppLayout for all screens
+        return build_app_layout(
+            content=content_area,
+            page_width=width,
+            page_title=page_title,
+            active_route=self.route,
+            on_navigate=self.on_navigate,
         )
 
     def on_resize(self, _: ft.ControlEvent) -> None:

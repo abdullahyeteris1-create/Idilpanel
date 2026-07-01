@@ -5,6 +5,7 @@ from __future__ import annotations
 import flet as ft
 
 from controllers.course_controller import CourseController
+from localization.tr import tr_error_message, tr_text
 from repositories.course_repository import CourseRepository
 from services.course_service import CourseService
 
@@ -28,7 +29,7 @@ def build_courses_page() -> ft.Control:
     total_lessons_field = ft.TextField(label="Hedef Ders Sayisi", width=200, value="16")
     status_field = ft.TextField(label="Durum", width=180, value="Aktif")
 
-    result_text = ft.Text(value="Hazir", selectable=True)
+    result_text = ft.Text(value=tr_text("ready"), selectable=True)
     courses_list = ft.Column(spacing=6)
 
     def payload() -> dict[str, str]:
@@ -56,53 +57,53 @@ def build_courses_page() -> ft.Control:
         try:
             record_id = controller.create_course(payload())
             id_field.value = str(record_id)
-            result_text.value = f"Olusturuldu: {record_id}"
+            result_text.value = tr_text("created")
             refresh_list()
         except Exception as exc:
-            result_text.value = f"Hata: {exc}"
+            result_text.value = tr_error_message(exc)
         e.page.update()
 
     def handle_get(e: ft.ControlEvent) -> None:
         try:
             record_id = int((id_field.value or "0").strip())
             record = controller.get_course(record_id)
-            result_text.value = f"Getirildi: {record}"
+            result_text.value = tr_text("get_success") if record else tr_text("record_not_found")
         except Exception as exc:
-            result_text.value = f"Hata: {exc}"
+            result_text.value = tr_error_message(exc)
         e.page.update()
 
     def handle_list(e: ft.ControlEvent) -> None:
         try:
             refresh_list()
-            result_text.value = "Liste guncellendi"
+            result_text.value = tr_text("list_refresh")
         except Exception as exc:
-            result_text.value = f"Hata: {exc}"
+            result_text.value = tr_error_message(exc)
         e.page.update()
 
     def handle_update(e: ft.ControlEvent) -> None:
         try:
             record_id = int((id_field.value or "0").strip())
             updated = controller.update_course(record_id, payload())
-            result_text.value = f"Guncellendi: {updated}"
+            result_text.value = tr_text("updated") if updated else tr_text("record_not_found")
             refresh_list()
         except Exception as exc:
-            result_text.value = f"Hata: {exc}"
+            result_text.value = tr_error_message(exc)
         e.page.update()
 
     def handle_delete(e: ft.ControlEvent) -> None:
         try:
             record_id = int((id_field.value or "0").strip())
             deleted = controller.delete_course(record_id)
-            result_text.value = f"Silindi: {deleted}"
+            result_text.value = tr_text("deleted") if deleted else tr_text("record_not_found")
             refresh_list()
         except Exception as exc:
-            result_text.value = f"Hata: {exc}"
+            result_text.value = tr_error_message(exc)
         e.page.update()
 
     try:
         refresh_list()
     except Exception:
-        courses_list.controls = [ft.Text("Liste alinamadi. Once veri tabanini hazirlayin.")]
+        courses_list.controls = [ft.Text(tr_text("list_unavailable"))]
 
     return ft.Container(
         padding=16,

@@ -11,7 +11,7 @@ def build_card(
     title: str | None = None,
     subtitle: str | None = None,
     action: ft.Control | None = None,
-    padding_size: str = "md",
+    padding_size: str = "card",
 ) -> ft.Container:
     """Create a card with 12 px radius and soft shadow."""
     colors = THEME_TOKENS["colors"]
