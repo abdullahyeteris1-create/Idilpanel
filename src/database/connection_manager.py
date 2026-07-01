@@ -119,6 +119,8 @@ class SQLiteConnectionManager:
             connection.execute("ALTER TABLE lessons ADD COLUMN anlama_algi REAL")
         if "gun_no" not in columns:
             connection.execute("ALTER TABLE lessons ADD COLUMN gun_no INTEGER NOT NULL DEFAULT 1")
+        if "focus_percent" not in columns:
+            connection.execute("ALTER TABLE lessons ADD COLUMN focus_percent REAL")
 
     def _ensure_weekly_schedule_columns(self, connection: sqlite3.Connection) -> None:
         if not self._table_exists(connection, "weekly_schedule"):

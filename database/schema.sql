@@ -88,6 +88,8 @@ CREATE TABLE lessons (
     okuma_hizi REAL,
     anlama_algi REAL
         CHECK (anlama_algi IS NULL OR (anlama_algi >= 0 AND anlama_algi <= 100)),
+    focus_percent REAL
+        CHECK (focus_percent IS NULL OR (focus_percent >= 0 AND focus_percent <= 100)),
     durum TEXT NOT NULL DEFAULT 'Planlandi'
         CHECK (durum IN ('Planlandi', 'Tamamlandi', 'Gelmedi', 'Iptal', 'Telafi Bekliyor', 'Yarim Kaldi')),
     ogretmen_notu TEXT,

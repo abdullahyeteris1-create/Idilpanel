@@ -75,6 +75,10 @@ class LessonService(BaseService):
     def list_course_lessons(self, course_id: int):
         return self.get_repository("lesson").list_by_course(course_id)
 
+    def list_student_lessons(self, student_id: int):
+        student_id = self._require_positive_int(student_id, "student")
+        return self.get_repository("lesson").list_by_student(student_id)
+
     def list_course_day_lessons(self, course_id: int, day_no: int):
         return self.get_repository("lesson").list_by_course_day(course_id, self._require_day_no(day_no))
 
@@ -188,6 +192,7 @@ class LessonService(BaseService):
 
         speed = self._optional_positive_float(data.get("okuma_hizi"), "okuma_hizi")
         comprehension = self._optional_float_in_range(data.get("anlama_algi"), "anlama_algi", 0.0, 100.0)
+        focus_percent = self._optional_float_in_range(data.get("focus_percent"), "focus_percent", 0.0, 100.0)
 
         validated_payload: dict[str, Any] = {
             "course_id": course_id,
@@ -197,6 +202,7 @@ class LessonService(BaseService):
             "metin": text_name,
             "okuma_hizi": speed,
             "anlama_algi": comprehension,
+            "focus_percent": focus_percent,
             "ogretmen_notu": str(data.get("ogretmen_notu") or data.get("notlar") or "").strip() or None,
             "durum": str(data.get("durum") or "Tamamlandi").strip() or "Tamamlandi",
         }

@@ -78,6 +78,7 @@ def build_lesson_records_page() -> ft.Control:
     text_field = AppInput(label="Metin adi", hint_text="Listede yoksa elle yazin", required=True)
     speed_field = AppInput(label="Hiz", hint_text="Opsiyonel")
     comprehension_field = AppInput(label="Anlama / Algi %", hint_text="Opsiyonel")
+    focus_field = AppInput(label="Odaklanma %", hint_text="Opsiyonel")
     notes_field = AppTextArea(label="Notlar", hint_text="Opsiyonel", min_height=104, min_lines=3, max_lines=5)
 
     result_text = ft.Text(value="Ogrenci ve kur secerek baslayin.", color=colors["text_secondary"], selectable=True)
@@ -100,6 +101,7 @@ def build_lesson_records_page() -> ft.Control:
         text_field.value = ""
         speed_field.value = ""
         comprehension_field.value = ""
+        focus_field.value = ""
         notes_field.value = ""
 
     def _empty_history(message: str) -> ft.Control:
@@ -201,6 +203,7 @@ def build_lesson_records_page() -> ft.Control:
                 controls=[
                     _metric("Hiz", _format_number(record.get("okuma_hizi"))),
                     _metric("Anlama", _format_number(record.get("anlama_algi"))),
+                    _metric("Odak", _format_number(record.get("focus_percent"))),
                 ],
             ),
         ]
@@ -223,6 +226,7 @@ def build_lesson_records_page() -> ft.Control:
     def _build_average_block(records: list[dict]) -> ft.Control:
         speed_average = _average([record.get("okuma_hizi") for record in records])
         comprehension_average = _average([record.get("anlama_algi") for record in records])
+        focus_average = _average([record.get("focus_percent") for record in records])
         return ft.Container(
             padding=12,
             border_radius=8,
@@ -233,6 +237,7 @@ def build_lesson_records_page() -> ft.Control:
                     ft.Text("Gun Ortalamasi", size=13, weight=ft.FontWeight.W_700, color=colors["text_primary"]),
                     _metric("Hiz", speed_average),
                     _metric("Anlama", comprehension_average),
+                    _metric("Odak", focus_average),
                 ],
             ),
         )
@@ -314,6 +319,7 @@ def build_lesson_records_page() -> ft.Control:
             "metin": text_field.value,
             "okuma_hizi": speed_field.value,
             "anlama_algi": comprehension_field.value,
+            "focus_percent": focus_field.value,
             "notlar": notes_field.value,
         }
 
@@ -345,6 +351,7 @@ def build_lesson_records_page() -> ft.Control:
             ft.Container(col={"xs": 12}, content=text_field),
             ft.Container(col={"xs": 12, "sm": 6}, content=speed_field),
             ft.Container(col={"xs": 12, "sm": 6}, content=comprehension_field),
+            ft.Container(col={"xs": 12, "sm": 6}, content=focus_field),
             ft.Container(col={"xs": 12}, content=notes_field),
         ],
     )

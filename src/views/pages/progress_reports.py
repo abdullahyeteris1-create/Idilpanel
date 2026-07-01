@@ -1,190 +1,424 @@
-"""Progress reports page migrated to shared design system components."""
+"""Progress reports built from lesson records."""
 
 from __future__ import annotations
 
+from collections import defaultdict
+from typing import Any
+
 import flet as ft
 
-from components import AppCard, AppDropdown, AppInput, ContentCard, PageContainer, PrimaryButton, SecondaryButton, ThreeColumnLayout, TwoColumnLayout
+from components import AppDropdown, ContentCard, PageContainer, SecondaryButton
+from controllers import build_lesson_controller
+from localization.tr import tr_error_message
 from theme.theme import THEME_TOKENS
 
 
-def _status_chip(status: str) -> ft.Control:
-    if status == "Hazir":
-        bg, fg = "#DCFCE7", "#166534"
-    elif status == "Taslak":
-        bg, fg = "#FEF3C7", "#92400E"
-    else:
-        bg, fg = "#DBEAFE", "#1E3A8A"
+ALL_COURSES = "all"
+DAYS_PER_COURSE = 8
+EMPTY_LESSON_MESSAGE = "Bu öğrenci için henüz ders kaydı bulunmuyor."
 
+
+def _text(value: object) -> str:
+    return str(value or "").strip()
+
+
+def _number(value: object) -> float | None:
+    if value is None or str(value).strip() == "":
+        return None
+    try:
+        return float(str(value).strip().replace(",", "."))
+    except (TypeError, ValueError):
+        return None
+
+
+def _average(values: list[object]) -> float | None:
+    numbers = [number for number in (_number(value) for value in values) if number is not None]
+    return sum(numbers) / len(numbers) if numbers else None
+
+
+def _format_number(value: float | None, suffix: str = "") -> str:
+    if value is None:
+        return "-"
+    rounded = round(value, 1)
+    text = str(int(rounded)) if rounded.is_integer() else str(rounded)
+    return f"{text}{suffix}"
+
+
+def _format_speed(value: float | None) -> str:
+    formatted = _format_number(value)
+    return "-" if formatted == "-" else f"{formatted} kelime/dk"
+
+
+def _format_percent(value: float | None) -> str:
+    formatted = _format_number(value)
+    return "-" if formatted == "-" else f"%{formatted}"
+
+
+def _metric_card(title: str, value: str, subtitle: str = "") -> ft.Control:
+    colors = THEME_TOKENS["colors"]
     return ft.Container(
-        padding=ft.Padding(10, 4, 10, 4),
-        border_radius=999,
-        bgcolor=bg,
-        content=ft.Text(status, size=12, color=fg, weight=ft.FontWeight.W_600),
+        col={"xs": 12, "sm": 6, "lg": 2},
+        content=ContentCard(
+            content=ft.Column(
+                spacing=8,
+                controls=[
+                    ft.Text(title, size=12, color=colors["text_secondary"], weight=ft.FontWeight.W_600),
+                    ft.Text(value, size=22, color=colors["text_primary"], weight=ft.FontWeight.W_700),
+                    ft.Text(subtitle, size=11, color=colors["text_secondary"]),
+                ],
+            )
+        ),
     )
 
 
-def _metric_card(title: str, value: str, subtitle: str) -> ft.Control:
+def _empty_state(message: str) -> ft.Control:
     colors = THEME_TOKENS["colors"]
-    return AppCard(
-        content=ft.Column(
-            spacing=8,
-            controls=[
-                ft.Text(title, size=13, color=colors["text_secondary"]),
-                ft.Text(value, size=28, weight=ft.FontWeight.W_700, color=colors["text_primary"]),
-                ft.Text(subtitle, size=12, color=colors["text_secondary"]),
-            ],
+    return ContentCard(
+        content=ft.Container(
+            height=180,
+            alignment=ft.Alignment(0, 0),
+            content=ft.Column(
+                spacing=10,
+                horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                alignment=ft.MainAxisAlignment.CENTER,
+                controls=[
+                    ft.Icon(ft.Icons.QUERY_STATS, size=38, color=colors["text_secondary"]),
+                    ft.Text(message, size=14, color=colors["text_secondary"], text_align=ft.TextAlign.CENTER),
+                ],
+            ),
         )
     )
 
 
-def build_progress_reports_page() -> ft.Control:
-    """Build progress reports page with design-system-aligned UI."""
+def _chart_empty_state(message: str) -> ft.Control:
     colors = THEME_TOKENS["colors"]
-
-    search_field = AppInput(label="", hint_text="Rapor ara...")
-    search_field.prefix_icon = ft.Icons.SEARCH
-    search_field.width = 280
-
-    period_dropdown = AppDropdown(
-        label="Donem",
-        options=["Bu Hafta", "Bu Ay", "Son 3 Ay"],
-        value="Bu Ay",
-    )
-    period_dropdown.width = 180
-
-    class_dropdown = AppDropdown(
-        label="Sinif",
-        options=["Tum Siniflar", "4-A", "4-B", "5-A", "5-B"],
-        value="Tum Siniflar",
-    )
-    class_dropdown.width = 180
-
-    header = ft.Row(
-        alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
-        vertical_alignment=ft.CrossAxisAlignment.CENTER,
-        controls=[
-            ft.Column(
-                spacing=4,
-                controls=[
-                    ft.Text("Gelisim Raporlari", size=24, weight=ft.FontWeight.W_700, color=colors["text_primary"]),
-                    ft.Text("Ogrenci ilerleme raporlarini yonetin", size=15, color=colors["text_secondary"]),
-                ],
-            ),
-            ft.Row(
-                spacing=8,
-                controls=[
-                    SecondaryButton("PDF Onizleme", icon=ft.Icons.PICTURE_AS_PDF),
-                    PrimaryButton("Yeni Rapor", icon=ft.Icons.ADD),
-                ],
-            ),
-        ],
-    )
-
-    filters = ContentCard(
-        title="Filtreler",
-        subtitle="Rapor listesini daraltin",
-        content=ft.Row(
-            spacing=12,
-            wrap=True,
-            controls=[
-                search_field,
-                period_dropdown,
-                class_dropdown,
-                SecondaryButton("Temizle", icon=ft.Icons.CLEAR),
-            ],
+    return ft.Container(
+        height=180,
+        alignment=ft.Alignment(0, 0),
+        border_radius=8,
+        bgcolor=colors["background"],
+        border=ft.Border(
+            top=ft.BorderSide(1, colors["border"]),
+            right=ft.BorderSide(1, colors["border"]),
+            bottom=ft.BorderSide(1, colors["border"]),
+            left=ft.BorderSide(1, colors["border"]),
         ),
+        content=ft.Text(message, size=13, color=colors["text_secondary"], text_align=ft.TextAlign.CENTER),
     )
 
-    metrics = ThreeColumnLayout(
-        first=_metric_card("Toplam Rapor", "42", "Bu ay olusturulan"),
-        second=_metric_card("Hazir", "27", "Paylasima hazir"),
-        third=_metric_card("Taslak", "15", "Duzenlenmeyi bekleyen"),
-        spacing=24,
-    )
 
-    report_rows_data = [
-        ("Aras Alp Baglica", "5-A • Haftalik Rapor", "2026-06-29", "Hazir"),
-        ("Mila Vatan", "5-A • Aylik Rapor", "2026-06-27", "Taslak"),
-        ("Ege Demir", "4-A • Haftalik Rapor", "2026-06-25", "Gonderildi"),
-        ("Ceren Bora", "4-A • Aylik Rapor", "2026-06-21", "Hazir"),
-    ]
+def _progress_chart(
+    title: str,
+    subtitle: str,
+    points: list[dict[str, Any]],
+    field: str,
+    color: str,
+    suffix: str = "",
+    fixed_max: float | None = None,
+) -> ft.Control:
+    colors = THEME_TOKENS["colors"]
+    values = [float(point[field]) for point in points if point.get(field) is not None]
+    if not values:
+        return ContentCard(title=title, subtitle=subtitle, content=_chart_empty_state("Bu grafik icin yeterli veri yok."))
 
-    report_rows: list[ft.Control] = []
-    for student_name, meta, report_date, status in report_rows_data:
-        initials = "".join(part[0] for part in student_name.split()[:2]).upper()
-        report_rows.append(
-            AppCard(
-                content=ft.Row(
-                    alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
-                    vertical_alignment=ft.CrossAxisAlignment.CENTER,
+    maximum = fixed_max or max(values)
+    minimum = 0.0
+    if maximum <= 0:
+        maximum = 1.0
+
+    columns: list[ft.Control] = []
+    for point in points:
+        raw_value = point.get(field)
+        value = float(raw_value) if raw_value is not None else 0.0
+        ratio = 0.0 if raw_value is None else (value - minimum) / (maximum - minimum)
+        height = max(10, int(min(1.0, max(0.0, ratio)) * 132))
+        value_label = _format_number(value, suffix) if raw_value is not None else "-"
+        columns.append(
+            ft.Container(
+                expand=True,
+                content=ft.Column(
+                    spacing=8,
+                    horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                    alignment=ft.MainAxisAlignment.END,
                     controls=[
-                        ft.Row(
-                            spacing=12,
-                            vertical_alignment=ft.CrossAxisAlignment.CENTER,
-                            controls=[
-                                ft.Container(
-                                    width=36,
-                                    height=36,
-                                    border_radius=18,
-                                    bgcolor=f"{colors['primary']}1F",
-                                    alignment=ft.Alignment(0, 0),
-                                    content=ft.Text(initials, size=12, weight=ft.FontWeight.W_700, color=colors["primary"]),
-                                ),
-                                ft.Column(
-                                    spacing=2,
-                                    controls=[
-                                        ft.Text(student_name, size=15, weight=ft.FontWeight.W_600, color=colors["text_primary"]),
-                                        ft.Text(f"{meta} • {report_date}", size=12, color=colors["text_secondary"]),
-                                    ],
-                                ),
-                            ],
+                        ft.Text(value_label, size=10, color=colors["text_secondary"], no_wrap=True),
+                        ft.Container(
+                            height=144,
+                            alignment=ft.Alignment(0, 1),
+                            content=ft.Container(
+                                width=28,
+                                height=height,
+                                border_radius=ft.BorderRadius(6, 6, 3, 3),
+                                bgcolor=color if raw_value is not None else colors["border"],
+                            ),
                         ),
-                        ft.Row(
-                            spacing=8,
-                            vertical_alignment=ft.CrossAxisAlignment.CENTER,
-                            controls=[
-                                _status_chip(status),
-                                SecondaryButton("", icon=ft.Icons.MORE_HORIZ),
-                            ],
+                        ft.Container(
+                            width=48,
+                            alignment=ft.Alignment(0, 0),
+                            content=ft.Text(f"{point['day']}. Gün", size=10, color=colors["text_secondary"], no_wrap=True),
                         ),
                     ],
-                )
+                ),
             )
         )
 
-    reports_panel = ContentCard(
-        title="Rapor Listesi",
-        subtitle="Olusturulan tum raporlar",
-        content=ft.Column(
-            spacing=12,
-            controls=report_rows,
-        ),
+    chart_body = ft.Column(
+        spacing=8,
+        controls=[
+            ft.Row(
+                alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+                controls=[
+                    ft.Text(_format_number(maximum, suffix), size=10, color=colors["text_secondary"]),
+                    ft.Text("Günlük ortalama", size=10, color=colors["text_secondary"]),
+                ],
+            ),
+            ft.Container(
+                height=208,
+                padding=ft.Padding(8, 10, 8, 4),
+                border_radius=8,
+                bgcolor=colors["background"],
+                border=ft.Border(
+                    top=ft.BorderSide(1, colors["border"]),
+                    right=ft.BorderSide(1, colors["border"]),
+                    bottom=ft.BorderSide(1, colors["border"]),
+                    left=ft.BorderSide(1, colors["border"]),
+                ),
+                content=ft.Row(
+                    spacing=8,
+                    vertical_alignment=ft.CrossAxisAlignment.END,
+                    controls=columns,
+                ),
+            ),
+        ],
     )
+    return ContentCard(title=title, subtitle=subtitle, content=chart_body)
 
-    summary_panel = ContentCard(
-        title="Rapor Ozeti",
-        subtitle="Hizli istatistikler",
-        content=ft.Column(
-            spacing=14,
+
+def _daily_points(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    grouped: dict[int, list[dict[str, Any]]] = defaultdict(list)
+    for record in records:
+        try:
+            day = int(record.get("gun_no") or 1)
+        except (TypeError, ValueError):
+            day = 1
+        if day > 0:
+            grouped[day].append(record)
+
+    points: list[dict[str, Any]] = []
+    for day in sorted(grouped):
+        day_records = grouped[day]
+        points.append(
+            {
+                "day": day,
+                "count": len(day_records),
+                "speed": _average([record.get("okuma_hizi") for record in day_records]),
+                "comprehension": _average([record.get("anlama_algi") for record in day_records]),
+                "focus": _average([record.get("focus_percent") for record in day_records]),
+            }
+        )
+    return points
+
+
+def _summaries(points: list[dict[str, Any]]) -> dict[str, str]:
+    speed_points = [point for point in points if point.get("speed") is not None]
+    first_speed = speed_points[0]["speed"] if speed_points else None
+    last_speed = speed_points[-1]["speed"] if speed_points else None
+    speed_growth = None
+    if first_speed and last_speed is not None:
+        speed_growth = ((float(last_speed) - float(first_speed)) / float(first_speed)) * 100
+
+    return {
+        "days": f"{len(points)} / {DAYS_PER_COURSE}",
+        "first_speed": _format_speed(first_speed),
+        "last_speed": _format_speed(last_speed),
+        "speed_growth": _format_percent(speed_growth),
+        "avg_comprehension": _format_percent(_average([point.get("comprehension") for point in points])),
+        "avg_focus": _format_percent(_average([point.get("focus") for point in points])),
+    }
+
+
+def build_progress_reports_page() -> ft.Control:
+    """Build progress reports from saved lesson records."""
+    controller = build_lesson_controller()
+    colors = THEME_TOKENS["colors"]
+
+    state: dict[str, Any] = {
+        "students": [],
+        "courses": [],
+        "records": [],
+    }
+
+    student_dropdown = AppDropdown(label="Öğrenci Seç", options=[], hint_text="Öğrenci seçin")
+    course_dropdown = AppDropdown(label="Kur Seç", options=[], hint_text="Tüm kurlar", disabled=True)
+    status_text = ft.Text("", size=12, color=colors["text_secondary"])
+    metrics_row = ft.ResponsiveRow(columns=12, spacing=12, run_spacing=12)
+    charts_column = ft.Column(spacing=16, expand=True)
+
+    def _selected_student_id() -> int | None:
+        value = _text(student_dropdown.value)
+        return int(value) if value else None
+
+    def _selected_course_id() -> int | None:
+        value = _text(course_dropdown.value)
+        if not value or value == ALL_COURSES:
+            return None
+        return int(value)
+
+    def _refresh_students() -> None:
+        students = list(controller.list_active_students(limit=500, offset=0))
+        state["students"] = students
+        student_dropdown.options = [
+            ft.dropdown.Option(
+                key=str(record.get("id")),
+                text=_text(record.get("ad_soyad")) or f"Öğrenci {record.get('id')}",
+            )
+            for record in students
+        ]
+        if not student_dropdown.value and students:
+            student_dropdown.value = str(students[0].get("id"))
+
+    def _refresh_courses() -> None:
+        student_id = _selected_student_id()
+        if student_id is None:
+            state["courses"] = []
+            course_dropdown.options = []
+            course_dropdown.value = None
+            course_dropdown.disabled = True
+            return
+
+        courses = list(controller.list_courses(student_id=student_id, limit=500, offset=0))
+        state["courses"] = courses
+        if not courses:
+            course_dropdown.options = []
+            course_dropdown.value = None
+            course_dropdown.disabled = True
+            return
+
+        options = [ft.dropdown.Option(key=ALL_COURSES, text="Tüm kurlar")]
+        options.extend(
+            ft.dropdown.Option(key=str(record.get("id")), text=f"{record.get('kur_no')}. Kur")
+            for record in courses
+        )
+        course_dropdown.options = options
+        course_dropdown.disabled = False
+        if not course_dropdown.value or not any(option.key == course_dropdown.value for option in options):
+            course_dropdown.value = ALL_COURSES
+
+    def _load_records() -> list[dict[str, Any]]:
+        student_id = _selected_student_id()
+        if student_id is None:
+            return []
+
+        course_id = _selected_course_id()
+        if course_id is not None:
+            return list(controller.list_course_lessons(course_id))
+        return list(controller.list_student_lessons(student_id))
+
+    def _render() -> None:
+        records = _load_records()
+        state["records"] = records
+        points = _daily_points(records)
+        summary = _summaries(points)
+
+        metrics_row.controls = [
+            _metric_card("Tamamlanan Gün", summary["days"], "Ders kaydı olan gün"),
+            _metric_card("İlk Okuma Hızı", summary["first_speed"], "İlk gün ortalaması"),
+            _metric_card("Son Okuma Hızı", summary["last_speed"], "Son gün ortalaması"),
+            _metric_card("Hız Artış Oranı", summary["speed_growth"], "İlk-son hız farkı"),
+            _metric_card("Ortalama Anlama", summary["avg_comprehension"], "Günlük ortalama"),
+            _metric_card("Ortalama Odaklanma", summary["avg_focus"], "Günlük ortalama"),
+        ]
+
+        if not records:
+            charts_column.controls = [_empty_state(EMPTY_LESSON_MESSAGE)]
+        else:
+            charts_column.controls = [
+                _progress_chart(
+                    "Okuma Hızı Gelişim Grafiği",
+                    "Günlere göre kelime/dk değişimi",
+                    points,
+                    "speed",
+                    colors["primary"],
+                ),
+                _progress_chart(
+                    "Anlama Oranı Grafiği",
+                    "Günlere göre anlama yüzdesi",
+                    points,
+                    "comprehension",
+                    colors["secondary"],
+                    "%",
+                    fixed_max=100,
+                ),
+                _progress_chart(
+                    "Odaklanma Grafiği",
+                    "Günlere göre odaklanma yüzdesi",
+                    points,
+                    "focus",
+                    colors["purple"],
+                    "%",
+                    fixed_max=100,
+                ),
+            ]
+
+        status_text.value = f"{len(records)} ders kaydı | {len(points)} gün"
+
+    def _update_page(page: ft.Page | None) -> None:
+        if page is not None:
+            page.update()
+
+    def _handle_student_change(e: ft.ControlEvent) -> None:
+        course_dropdown.value = None
+        _refresh_courses()
+        _render()
+        _update_page(e.page)
+
+    def _handle_course_change(e: ft.ControlEvent) -> None:
+        _render()
+        _update_page(e.page)
+
+    def _handle_refresh(e: ft.ControlEvent) -> None:
+        _refresh_students()
+        _refresh_courses()
+        _render()
+        _update_page(e.page)
+
+    student_dropdown.on_select = _handle_student_change
+    course_dropdown.on_select = _handle_course_change
+
+    try:
+        _refresh_students()
+        _refresh_courses()
+        _render()
+    except Exception as exc:
+        status_text.value = tr_error_message(exc)
+        metrics_row.controls = []
+        charts_column.controls = [_empty_state("Gelişim verileri yüklenemedi.")]
+
+    filters = ContentCard(
+        title="Filtreler",
+        subtitle="Veriler Ders Kayıtları ekranındaki kayıtlardan otomatik hesaplanır.",
+        action=SecondaryButton(label="Yenile", icon=ft.Icons.REFRESH, on_click=_handle_refresh),
+        content=ft.ResponsiveRow(
+            columns=12,
+            spacing=12,
+            run_spacing=12,
             controls=[
-                ft.Row(alignment=ft.MainAxisAlignment.SPACE_BETWEEN, controls=[ft.Text("Ortalama Anlama"), ft.Text("%81", weight=ft.FontWeight.W_700)]),
-                ft.Row(alignment=ft.MainAxisAlignment.SPACE_BETWEEN, controls=[ft.Text("Ortalama WPM"), ft.Text("132", weight=ft.FontWeight.W_700)]),
-                ft.Row(alignment=ft.MainAxisAlignment.SPACE_BETWEEN, controls=[ft.Text("Veliye Gonderilen"), ft.Text("18", weight=ft.FontWeight.W_700)]),
-                ft.Divider(height=1, color=colors["border"]),
-                PrimaryButton("PDF Cikti Al", icon=ft.Icons.DOWNLOAD),
+                ft.Container(col={"xs": 12, "md": 5}, content=student_dropdown),
+                ft.Container(col={"xs": 12, "md": 4}, content=course_dropdown),
+                ft.Container(col={"xs": 12, "md": 3}, alignment=ft.Alignment(0, 0), content=status_text),
             ],
         ),
     )
 
     body = ft.Column(
-        spacing=24,
+        spacing=16,
         expand=True,
+        scroll=ft.ScrollMode.AUTO,
         controls=[
-            header,
+            ft.Text("Gelişim Raporları", size=24, weight=ft.FontWeight.W_700, color=colors["text_primary"]),
             filters,
-            metrics,
-            TwoColumnLayout(left=reports_panel, right=summary_panel, left_flex=2, right_flex=1, spacing=24),
+            metrics_row,
+            charts_column,
         ],
     )
 

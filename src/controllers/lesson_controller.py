@@ -35,6 +35,9 @@ class LessonController:
     def list_course_lessons(self, course_id: int):
         return self._lesson_service.list_course_lessons(course_id)
 
+    def list_student_lessons(self, student_id: int):
+        return self._lesson_service.list_student_lessons(student_id)
+
     def list_course_day_lessons(self, course_id: int, day_no: int):
         return self._lesson_service.list_course_day_lessons(course_id, day_no)
 

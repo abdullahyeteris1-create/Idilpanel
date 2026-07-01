@@ -23,6 +23,8 @@ class LessonRepository(BaseRepository):
             self.execute_write(f"ALTER TABLE {self.table_name} ADD COLUMN okuma_hizi REAL")
         if "anlama_algi" not in columns:
             self.execute_write(f"ALTER TABLE {self.table_name} ADD COLUMN anlama_algi REAL")
+        if "focus_percent" not in columns:
+            self.execute_write(f"ALTER TABLE {self.table_name} ADD COLUMN focus_percent REAL")
 
     def create(self, data):
         self.ensure_lr_columns()
@@ -65,6 +67,21 @@ class LessonRepository(BaseRepository):
             ORDER BY gun_no ASC, lesson_no ASC, id ASC
             """,
             (course_id,),
+        )
+
+    def list_by_student(self, student_id: int):
+        self.ensure_lr_columns()
+        return self.execute_fetchall(
+            """
+            SELECT lessons.*
+            FROM lessons
+            INNER JOIN courses ON courses.id = lessons.course_id
+            WHERE courses.student_id = ?
+                AND lessons.is_active = 1
+                AND courses.is_active = 1
+            ORDER BY courses.kur_no ASC, lessons.gun_no ASC, lessons.lesson_no ASC, lessons.id ASC
+            """,
+            (student_id,),
         )
 
     def list_by_course_day(self, course_id: int, day_no: int):
