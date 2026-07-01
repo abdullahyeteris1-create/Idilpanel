@@ -1,6 +1,7 @@
 import flet as ft
 import traceback
 
+from database.connection_manager import db_manager
 from theme.theme import IdilTheme
 from views.layout import AppLayoutShell
 from views.router import resolve_route
@@ -9,6 +10,7 @@ from views.router import resolve_route
 def configure_app(page: ft.Page) -> None:
     """Configure base window settings and render the shared layout shell."""
     page.title = "İDİL HIZLI OKUMA"
+    db_manager.initialize()
     page.padding = 0
     page.clean()
     IdilTheme.apply_to_page(page)

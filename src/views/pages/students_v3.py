@@ -150,40 +150,6 @@ def build_students_v3_page() -> ft.Container:
     student_controller: StudentController = build_student_controller()
     course_controller: CourseController = build_course_controller()
 
-    def _log_control_state(
-        name: str,
-        control: ft.Control,
-        event: ft.ControlEvent | None = None,
-    ) -> None:
-        event_width = getattr(event, "width", None)
-        event_height = getattr(event, "height", None)
-        width = event_width if event_width is not None else getattr(control, "width", None)
-        height = event_height if event_height is not None else getattr(control, "height", None)
-        expand = getattr(control, "expand", None)
-        scroll = getattr(control, "scroll", None)
-        print(
-            "[LAYOUT-DEBUG][StudentsV3] "
-            f"{name}: width={width}, height={height}, expand={expand}, scroll={scroll}"
-        )
-
-    def _size_logger(name: str, control: ft.Control):
-        def _handler(e: ft.ControlEvent) -> None:
-            _log_control_state(name, control, e)
-
-        return _handler
-
-    def _scroll_logger(name: str, control: ft.Control):
-        def _handler(e: ft.OnScrollEvent) -> None:
-            _log_control_state(name, control)
-            print(
-                "[LAYOUT-DEBUG][StudentsV3] "
-                f"{name}.scroll: pixels={getattr(e, 'pixels', None)}, "
-                f"max_scroll_extent={getattr(e, 'max_scroll_extent', None)}, "
-                f"viewport_dimension={getattr(e, 'viewport_dimension', None)}"
-            )
-
-        return _handler
-
     state: dict[str, Any] = {
         "students": [],
         "courses": [],
@@ -197,8 +163,6 @@ def build_students_v3_page() -> ft.Container:
 
     feedback_area = ft.Container(height=0)
     student_list = ft.Column(spacing=spacing["sm"], scroll=ft.ScrollMode.AUTO, expand=True)
-    student_list.on_size_change = _size_logger("student_list", student_list)
-    student_list.on_scroll = _scroll_logger("student_list", student_list)
     result_text = ft.Text("0 kayit", color=colors["text_secondary"])
     page_text = ft.Text("Sayfa 1/1", color=colors["text_secondary"])
 
@@ -552,9 +516,6 @@ def build_students_v3_page() -> ft.Container:
         scroll=ft.ScrollMode.AUTO,
         expand=True,
     )
-    form_fields.on_size_change = _size_logger("form_fields", form_fields)
-    form_fields.on_scroll = _scroll_logger("form_fields", form_fields)
-
     form_footer = ft.Container(
         padding=ft.Padding(0, spacing["md"], 0, 0),
         border=ft.Border(top=ft.BorderSide(1, colors["border_neutral"])),
@@ -578,16 +539,12 @@ def build_students_v3_page() -> ft.Container:
             form_footer,
         ],
     )
-    left_panel_content.on_size_change = _size_logger("build_card.content.left", left_panel_content)
-
     left_panel = build_card(
         title="Ogrenci Formu",
         subtitle="Kayit bilgileri",
         content=left_panel_content,
     )
     left_panel.expand = True
-    left_panel.on_size_change = _size_logger("left_panel", left_panel)
-
     search_input = build_search_box(
         hint_text="Ad, sinif, kur, telefon veya veli ara...",
         on_change=_handle_search,
@@ -626,8 +583,6 @@ def build_students_v3_page() -> ft.Container:
             list_footer,
         ],
     )
-    right_panel_content.on_size_change = _size_logger("build_card.content.right", right_panel_content)
-
     right_panel = build_card(
         title="Student Management List",
         subtitle="SQLite ogrenci kayitlari",
@@ -635,8 +590,6 @@ def build_students_v3_page() -> ft.Container:
         content=right_panel_content,
     )
     right_panel.expand = True
-    right_panel.on_size_change = _size_logger("right_panel", right_panel)
-
     main_content = ft.ResponsiveRow(
         columns=12,
         spacing=spacing["md"],
@@ -647,8 +600,6 @@ def build_students_v3_page() -> ft.Container:
             ft.Container(col={"xs": 12, "md": 7, "xl": 8}, expand=True, content=right_panel),
         ],
     )
-    main_content.on_size_change = _size_logger("main_content_responsive_row", main_content)
-
     body = ft.Column(
         expand=True,
         spacing=spacing["md"],
@@ -660,14 +611,6 @@ def build_students_v3_page() -> ft.Container:
 
     _refresh_from_sqlite()
     _set_feedback("info", "Hazir")
-
-    _log_control_state("left_panel.initial", left_panel)
-    _log_control_state("right_panel.initial", right_panel)
-    _log_control_state("form_fields.initial", form_fields)
-    _log_control_state("student_list.initial", student_list)
-    _log_control_state("build_card.content.left.initial", left_panel_content)
-    _log_control_state("build_card.content.right.initial", right_panel_content)
-    _log_control_state("main_content_responsive_row.initial", main_content)
 
     return ft.Container(
         expand=True,

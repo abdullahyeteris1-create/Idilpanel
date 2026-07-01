@@ -72,28 +72,6 @@ class AppLayout:
         """
         colors = THEME_TOKENS["colors"]
 
-        def _log_control_state(
-            name: str,
-            control: ft.Control,
-            event: ft.ControlEvent | None = None,
-        ) -> None:
-            event_width = getattr(event, "width", None)
-            event_height = getattr(event, "height", None)
-            width = event_width if event_width is not None else getattr(control, "width", None)
-            height = event_height if event_height is not None else getattr(control, "height", None)
-            expand = getattr(control, "expand", None)
-            scroll = getattr(control, "scroll", None)
-            print(
-                "[LAYOUT-DEBUG][AppLayout] "
-                f"{name}: width={width}, height={height}, expand={expand}, scroll={scroll}"
-            )
-
-        def _size_logger(name: str, control: ft.Control):
-            def _handler(e: ft.ControlEvent) -> None:
-                _log_control_state(name, control, e)
-
-            return _handler
-
         # Build topbar with page title
         topbar = build_topbar(self.page_title)
 
@@ -103,8 +81,6 @@ class AppLayout:
             expand=True,
             content=self.content,
         )
-        content_area.on_size_change = _size_logger("content_area", content_area)
-        _log_control_state("content_area.initial", content_area)
 
         # Main column: topbar (fixed) + content area (fixed viewport)
         main_column = ft.Column(

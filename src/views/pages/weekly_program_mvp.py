@@ -81,9 +81,7 @@ def _debug_progress(message: str, **values: object) -> None:
 
 
 def _ensure_schema() -> None:
-    schema_path = db_manager.config.db_path.parent / "schema.sql"
-    if not schema_path.exists():
-        schema_path = Path(__file__).resolve().parents[3] / "database" / "schema.sql"
+    schema_path = db_manager.config.schema_path
     with db_manager.connection_scope() as connection:
         has_students = connection.execute(
             "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'students'"
