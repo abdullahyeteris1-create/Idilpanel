@@ -23,11 +23,32 @@ class LessonController:
     def update_lesson(self, record_id, data):
         return self._lesson_service.update_lesson(record_id, data)
 
+    def save_course_day_lesson(self, data):
+        return self._lesson_service.save_course_day_lesson(data)
+
+    def create_course_day_entry(self, data):
+        return self._lesson_service.create_course_day_entry(data)
+
+    def get_course_day_lesson(self, course_id: int, day_no: int, lesson_slot: int):
+        return self._lesson_service.get_course_day_lesson(course_id, day_no, lesson_slot)
+
+    def list_course_lessons(self, course_id: int):
+        return self._lesson_service.list_course_lessons(course_id)
+
+    def list_course_day_lessons(self, course_id: int, day_no: int):
+        return self._lesson_service.list_course_day_lessons(course_id, day_no)
+
+    def day_slot_from_lesson_no(self, lesson_no: int) -> tuple[int, int]:
+        return self._lesson_service.day_slot_from_lesson_no(lesson_no)
+
     def delete_lesson(self, record_id):
         return self._lesson_service.delete_lesson(record_id)
 
     def list_students(self, limit: int = 200, offset: int = 0):
         return self._lesson_service.list_students(limit, offset)
+
+    def list_active_students(self, limit: int = 200, offset: int = 0):
+        return self._lesson_service.list_active_students(limit, offset)
 
     def list_courses(self, student_id: int | None = None, limit: int = 200, offset: int = 0):
         return self._lesson_service.list_courses(student_id, limit, offset)

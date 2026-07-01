@@ -36,6 +36,7 @@ def build_sidebar(
         ("/students", ft.Icons.GROUP, "Ogrenciler"),
         ("/courses", ft.Icons.MENU_BOOK, "Kurslar"),
         ("/lesson-records", ft.Icons.SCHOOL, "Ders Kayitlari"),
+        ("/text-library", ft.Icons.LIBRARY_BOOKS, "Metin Kutuphanesi"),
         ("/progress-reports", ft.Icons.INSERT_CHART, "Gelisim Raporlari"),
         ("/pdf", ft.Icons.PICTURE_AS_PDF, "PDF"),
         ("/settings", ft.Icons.SETTINGS, "Ayarlar"),

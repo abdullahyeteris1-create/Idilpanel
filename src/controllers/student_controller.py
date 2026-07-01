@@ -20,6 +20,9 @@ class StudentController:
     def list_students(self, limit: int = 100, offset: int = 0):
         return self._student_service.list_students(limit, offset)
 
+    def list_active_students(self, limit: int = 100, offset: int = 0):
+        return self._student_service.list_active_students(limit, offset)
+
     def update_student(self, record_id, data):
         return self._student_service.update_student(record_id, data)
 

@@ -20,6 +20,20 @@ class StudentRepository(BaseRepository):
     def list_all(self, limit: int = 100, offset: int = 0):
         return self._select_all(self.table_name, self.id_column, limit, offset)
 
+    def list_active(self, limit: int = 100, offset: int = 0):
+        return self.execute_fetchall(
+            """
+            SELECT *
+            FROM students
+            WHERE is_active = 1
+              AND deleted_at IS NULL
+              AND durum = 'Aktif'
+            ORDER BY id ASC
+            LIMIT ? OFFSET ?
+            """,
+            (limit, offset),
+        )
+
     def update(self, record_id, data):
         return self._update_from_mapping(self.table_name, self.id_column, record_id, data)
 

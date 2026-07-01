@@ -79,10 +79,15 @@ CREATE TABLE lessons (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     schedule_id INTEGER,
     course_id INTEGER NOT NULL,
+    gun_no INTEGER NOT NULL DEFAULT 1
+        CHECK (gun_no >= 1),
     lesson_no INTEGER NOT NULL
-        CHECK (lesson_no BETWEEN 1 AND 16),
+        CHECK (lesson_no >= 1),
     tarih TEXT NOT NULL,
     metin TEXT,
+    okuma_hizi REAL,
+    anlama_algi REAL
+        CHECK (anlama_algi IS NULL OR (anlama_algi >= 0 AND anlama_algi <= 100)),
     durum TEXT NOT NULL DEFAULT 'Planlandi'
         CHECK (durum IN ('Planlandi', 'Tamamlandi', 'Gelmedi', 'Iptal', 'Telafi Bekliyor', 'Yarim Kaldi')),
     ogretmen_notu TEXT,
@@ -93,7 +98,7 @@ CREATE TABLE lessons (
     is_active INTEGER NOT NULL DEFAULT 1
         CHECK (is_active IN (0, 1)),
     deleted_at TEXT DEFAULT NULL,
-    UNIQUE (course_id, lesson_no, is_active),
+    UNIQUE (course_id, gun_no, lesson_no, is_active),
     FOREIGN KEY (schedule_id) REFERENCES schedules(id),
     FOREIGN KEY (course_id) REFERENCES courses(id)
 );
@@ -142,6 +147,21 @@ CREATE TABLE reports (
     FOREIGN KEY (course_id) REFERENCES courses(id)
 );
 
+-- 7) texts
+-- Central text library used by lesson records in future sprints.
+CREATE TABLE texts (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    title TEXT NOT NULL,
+    course_level INTEGER NOT NULL
+        CHECK (course_level >= 1),
+    category TEXT,
+    word_count INTEGER
+        CHECK (word_count IS NULL OR word_count >= 0),
+    is_active INTEGER NOT NULL DEFAULT 1
+        CHECK (is_active IN (0, 1)),
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
 -- Indexes
 CREATE INDEX idx_students_ad_soyad ON students(ad_soyad);
 CREATE INDEX idx_students_durum ON students(durum);
@@ -160,3 +180,7 @@ CREATE INDEX idx_measurements_lesson_id ON measurements(lesson_id);
 
 CREATE INDEX idx_reports_student_created_at ON reports(student_id, created_at);
 CREATE INDEX idx_reports_rapor_tipi ON reports(rapor_tipi);
+
+CREATE INDEX idx_texts_title ON texts(title);
+CREATE INDEX idx_texts_course_level ON texts(course_level);
+CREATE INDEX idx_texts_is_active ON texts(is_active);

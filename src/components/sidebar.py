@@ -17,6 +17,7 @@ DEFAULT_SIDEBAR_ITEMS: list[SidebarItem] = [
     ("/students", ft.Icons.PERSON, "Ogrenciler"),
     ("/weekly-program", ft.Icons.CALENDAR_MONTH, "Haftalik Program"),
     ("/lesson-records", ft.Icons.MENU_BOOK, "Ders Kayitlari"),
+    ("/text-library", ft.Icons.LIBRARY_BOOKS, "Metin Kutuphanesi"),
     ("/measurements", ft.Icons.STRAIGHTEN, "Olcumler"),
     ("/progress-reports", ft.Icons.ANALYTICS, "Gelisim Raporlari"),
     ("/parent-reports", ft.Icons.DESCRIPTION, "Veli Raporlari"),

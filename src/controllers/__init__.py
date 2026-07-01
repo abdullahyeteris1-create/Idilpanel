@@ -5,17 +5,20 @@ from repositories.lesson_repository import LessonRepository
 from repositories.measurement_repository import MeasurementRepository
 from repositories.schedule_repository import ScheduleRepository
 from repositories.student_repository import StudentRepository
+from repositories.text_repository import TextRepository
 from services.course_service import CourseService
 from services.lesson_service import LessonService
 from services.measurement_service import MeasurementService
 from services.schedule_service import ScheduleService
 from services.student_service import StudentService
+from services.text_service import TextService
 
 from .course_controller import CourseController
 from .lesson_controller import LessonController
 from .measurement_controller import MeasurementController
 from .schedule_controller import ScheduleController
 from .student_controller import StudentController
+from .text_controller import TextController
 
 
 def build_student_controller() -> StudentController:
@@ -58,15 +61,23 @@ def build_measurement_controller() -> MeasurementController:
 	return MeasurementController(measurement_service=measurement_service)
 
 
+def build_text_controller() -> TextController:
+	text_repository = TextRepository()
+	text_service = TextService(text_repository=text_repository)
+	return TextController(text_service=text_service)
+
+
 __all__ = [
 	"StudentController",
 	"CourseController",
 	"ScheduleController",
 	"LessonController",
 	"MeasurementController",
+	"TextController",
 	"build_student_controller",
 	"build_course_controller",
 	"build_schedule_controller",
 	"build_lesson_controller",
 	"build_measurement_controller",
+	"build_text_controller",
 ]

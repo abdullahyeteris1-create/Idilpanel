@@ -1,407 +1,391 @@
-"""Lesson records page with end-to-end Lesson module integration."""
+"""Dynamic daily lesson records page for Sprint LR-3."""
 
 from __future__ import annotations
 
 import flet as ft
 
-from components import AppCard, AppDatePicker, AppDropdown, AppInput, ContentCard, PageContainer, PrimaryButton, SecondaryButton, TwoColumnLayout
-from controllers import build_lesson_controller
-from localization.tr import tr_error_message, tr_text
+from components import AppCard, AppDropdown, AppInput, AppTextArea, ContentCard, PageContainer, PrimaryButton, TwoColumnLayout
+from controllers import build_lesson_controller, build_text_controller
+from localization.tr import tr_error_message
 from theme.theme import THEME_TOKENS
 
 
-def _status_chip(status: str) -> ft.Control:
-    status_text = status or "Planlandi"
-    if status_text == "Tamamlandi":
-        bg, fg = "#DBEAFE", "#1E3A8A"
-    elif status_text == "Iptal":
-        bg, fg = "#FEE2E2", "#991B1B"
-    else:
-        bg, fg = "#FEF3C7", "#92400E"
+DAYS_PER_COURSE = 8
 
-    return ft.Container(
-        padding=ft.Padding(10, 4, 10, 4),
-        border_radius=999,
-        bgcolor=bg,
-        content=ft.Text(status_text, size=12, color=fg, weight=ft.FontWeight.W_600),
+
+def _as_text(value: object) -> str:
+    return str(value or "").strip()
+
+
+def _as_float(value: object) -> float | None:
+    if value is None or str(value).strip() == "":
+        return None
+    try:
+        return float(str(value).strip().replace(",", "."))
+    except (TypeError, ValueError):
+        return None
+
+
+def _format_number(value: object) -> str:
+    number = _as_float(value)
+    if number is None:
+        return ""
+    return str(int(number)) if number.is_integer() else str(round(number, 1))
+
+
+def _average(values: list[object]) -> str:
+    numbers = [number for number in (_as_float(value) for value in values) if number is not None]
+    if not numbers:
+        return "-"
+    result = sum(numbers) / len(numbers)
+    return str(int(round(result)))
+
+
+def _metric(label: str, value: str) -> ft.Control:
+    colors = THEME_TOKENS["colors"]
+    return ft.Row(
+        spacing=4,
+        controls=[
+            ft.Text(f"{label}:", size=12, color=colors["text_secondary"], weight=ft.FontWeight.W_600),
+            ft.Text(value or "-", size=12, color=colors["text_primary"]),
+        ],
     )
 
 
 def build_lesson_records_page() -> ft.Control:
-    """Build lesson records page and wire UI -> controller -> service -> repository -> SQLite."""
+    """Build the LR-3 dynamic daily lesson records screen."""
     controller = build_lesson_controller()
+    text_controller = build_text_controller()
     colors = THEME_TOKENS["colors"]
 
-    lesson_cache: dict[int, dict] = {}
+    state: dict[str, object] = {
+        "students": [],
+        "courses": [],
+        "records_by_day": {},
+        "text_titles": [],
+    }
 
-    student_dropdown = AppDropdown(label="Ogrenci", options=[], hint_text="Ogrenci secin")
-    course_dropdown = AppDropdown(label="Kurs", options=[], hint_text="Kurs secin")
-    lesson_dropdown = AppDropdown(label="Kayitli Ders", options=[], hint_text="Kayit secin")
-
-    date_state = {"value": ""}
-    date_picker = AppDatePicker(
-        label="Tarih",
+    student_dropdown = AppDropdown(label="Ogrenci", options=[], hint_text="Ogrenci secin", required=True)
+    course_dropdown = AppDropdown(label="Kur", options=[], hint_text="Kur secin", required=True, disabled=True)
+    day_dropdown = AppDropdown(
+        label="Gun",
+        options=[(str(day), f"{day}. Gun") for day in range(1, DAYS_PER_COURSE + 1)],
+        value="1",
         required=True,
-        on_date_change=lambda value: date_state.update({"value": value}),
     )
 
-    text_field = AppInput(label="Metin", hint_text="Ders metni")
-    word_count_field = AppInput(label="Kelime Sayisi", hint_text="Ornek: 120")
-    duration_field = AppInput(label="Sure", hint_text="Dakika")
-    comprehension_field = AppInput(label="Anlama %", hint_text="0-100")
+    text_dropdown = AppDropdown(label="Metin adi", options=[], hint_text="Metin kutuphanesinden secin")
+    text_field = AppInput(label="Metin adi", hint_text="Listede yoksa elle yazin", required=True)
+    speed_field = AppInput(label="Hiz", hint_text="Opsiyonel")
+    comprehension_field = AppInput(label="Anlama / Algi %", hint_text="Opsiyonel")
+    notes_field = AppTextArea(label="Notlar", hint_text="Opsiyonel", min_height=104, min_lines=3, max_lines=5)
 
-    search_field = AppInput(label="", hint_text="Kayit ara...")
-    search_field.prefix_icon = ft.Icons.SEARCH
-    search_field.width = 280
+    result_text = ft.Text(value="Ogrenci ve kur secerek baslayin.", color=colors["text_secondary"], selectable=True)
+    selected_info = ft.Text(value="Her gun icin istediginiz kadar metin kaydi ekleyin.", color=colors["text_secondary"], size=13)
+    history_column = ft.Column(spacing=12, scroll=ft.ScrollMode.AUTO, expand=True)
 
-    result_text = ft.Text(value=tr_text("ready"), selectable=True, color=colors["text_secondary"])
-    lessons_list = ft.Column(spacing=12, scroll=ft.ScrollMode.AUTO, expand=True)
-    total_info_text = ft.Text(value="Toplam 0 ders", color=colors["text_secondary"], size=15)
+    def _selected_student_id() -> int | None:
+        value = _as_text(student_dropdown.value)
+        return int(value) if value else None
 
-    def _date_value() -> str:
-        field = date_picker.data["field"]
-        return str(field.value or "").strip()
+    def _selected_course_id() -> int | None:
+        value = _as_text(course_dropdown.value)
+        return int(value) if value else None
 
-    def _set_date_value(value: str) -> None:
-        field = date_picker.data["field"]
-        field.value = value
-        date_state["value"] = value
+    def _selected_day() -> int:
+        return int(day_dropdown.value or "1")
 
-    def _selected_lesson_id() -> int | None:
-        selected = (lesson_dropdown.value or "").strip()
-        if not selected:
-            return None
-        return int(selected)
+    def _clear_entry_fields() -> None:
+        text_dropdown.value = None
+        text_field.value = ""
+        speed_field.value = ""
+        comprehension_field.value = ""
+        notes_field.value = ""
 
-    def _validate_before_save() -> tuple[bool, int | None, int | None]:
-        student_value = (student_dropdown.value or "").strip()
-        course_value = (course_dropdown.value or "").strip()
-
-        if not student_value:
-            result_text.value = "Lütfen öğrenci seçin."
-            return False, None, None
-
-        if not course_value:
-            result_text.value = "Lütfen kurs seçin."
-            return False, None, None
-
-        student_id = int(student_value)
-        course_id = int(course_value)
-        if not controller.is_course_available_for_student(student_id, course_id):
-            result_text.value = "Seçilen kurs bu öğrenciye ait değil."
-            return False, None, None
-
-        if not _date_value():
-            result_text.value = "Bu alan zorunludur."
-            return False, None, None
-
-        return True, student_id, course_id
-
-    def payload(lesson_no_override: int | None = None) -> dict[str, str]:
-        _, student_id, course_id = _validate_before_save()
-        resolved_lesson_no = lesson_no_override
-        if resolved_lesson_no is None:
-            resolved_lesson_no = controller.suggest_next_lesson_no(int(course_id or 0))
-        return {
-            "student_id": str(student_id or ""),
-            "course_id": str(course_id or ""),
-            "lesson_no": str(resolved_lesson_no),
-            "tarih": _date_value(),
-            "metin": (text_field.value or "").strip(),
-            "word_count": (word_count_field.value or "").strip(),
-            "duration": (duration_field.value or "").strip(),
-            "comprehension": (comprehension_field.value or "").strip(),
-            "durum": "Planlandi",
-        }
-
-    def _matches_search(record: dict, query: str) -> bool:
-        if not query:
-            return True
-        target = " ".join(
-            [
-                str(record.get("id") or ""),
-                str(record.get("course_id") or ""),
-                str(record.get("lesson_no") or ""),
-                str(record.get("tarih") or ""),
-                str(record.get("durum") or ""),
-            ]
-        ).lower()
-        return query.lower() in target
-
-    def _fill_form_from_record(record: dict) -> None:
-        course_records = controller.list_courses(limit=500, offset=0)
-        matched_course = next(
-            (item for item in course_records if int(item.get("id", 0)) == int(record.get("course_id", 0))),
-            None,
-        )
-        if matched_course:
-            student_dropdown.value = str(matched_course.get("student_id"))
-            refresh_courses(int(matched_course.get("student_id")))
-
-        course_dropdown.value = str(record.get("course_id") or "")
-        _set_date_value(str(record.get("tarih") or ""))
-        text_field.value = str(record.get("metin") or "")
-        word_count_field.value = str(record.get("word_count") or "")
-        duration_field.value = str(record.get("duration") or "")
-        comprehension_field.value = str(record.get("comprehension") or "")
-
-    def refresh_students() -> None:
-        records = controller.list_students(limit=200, offset=0)
-        student_dropdown.options = [
-            ft.dropdown.Option(key=str(record.get("id")), text=str(record.get("ad_soyad")))
-            for record in records
-        ]
-
-    def refresh_courses(selected_student_id: int | None = None) -> None:
-        records = controller.list_courses(student_id=selected_student_id, limit=200, offset=0)
-        course_dropdown.options = [
-            ft.dropdown.Option(key=str(record.get("id")), text=f"Kur {record.get('kur_no')} (Ogrenci {record.get('student_id')})")
-            for record in records
-        ]
-
-    def _build_lesson_card(record: dict) -> ft.Control:
-        record_id = int(record.get("id", 0) or 0)
-
-        def _select(e: ft.ControlEvent) -> None:
-            lesson_dropdown.value = str(record_id)
-            _fill_form_from_record(record)
-            result_text.value = tr_text("get_success")
-            e.page.update()
-
-        card = AppCard(
+    def _empty_history(message: str) -> ft.Control:
+        return AppCard(
             content=ft.Row(
-                alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
-                vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                spacing=10,
                 controls=[
-                    ft.Column(
-                        spacing=2,
-                        controls=[
-                            ft.Text(
-                                f"Kurs {record.get('course_id')} • Ders {record.get('lesson_no')}",
-                                size=15,
-                                weight=ft.FontWeight.W_600,
-                                color=colors["text_primary"],
-                            ),
-                            ft.Text(
-                                f"Tarih: {record.get('tarih') or '-'}",
-                                size=12,
-                                color=colors["text_secondary"],
-                            ),
-                        ],
-                    ),
-                    ft.Row(
-                        spacing=8,
-                        vertical_alignment=ft.CrossAxisAlignment.CENTER,
-                        controls=[
-                            _status_chip(str(record.get("durum") or "Planlandi")),
-                            ft.Icon(ft.Icons.CHEVRON_RIGHT, size=18, color=colors["text_secondary"]),
-                        ],
-                    ),
+                    ft.Icon(ft.Icons.INBOX_OUTLINED, color=colors["text_secondary"]),
+                    ft.Text(message, color=colors["text_secondary"]),
                 ],
             )
         )
-        card.on_click = _select
-        return card
 
-    def refresh_lessons() -> None:
-        records = controller.list_lessons(limit=200, offset=0)
-        lesson_cache.clear()
-        lesson_dropdown.options = []
+    def _refresh_students() -> None:
+        students = list(controller.list_active_students(limit=500, offset=0))
+        state["students"] = students
+        student_dropdown.options = [
+            ft.dropdown.Option(key=str(record.get("id")), text=_as_text(record.get("ad_soyad")) or f"Ogrenci {record.get('id')}")
+            for record in students
+        ]
 
-        filtered_records: list[dict] = []
+    def _refresh_texts() -> None:
+        records = list(text_controller.search_texts(query="", course_level=None, limit=5000, offset=0))
+        titles = sorted(
+            {
+                _as_text(record.get("title"))
+                for record in records
+                if int(record.get("is_active", 1) or 0) == 1 and _as_text(record.get("title"))
+            },
+            key=lambda value: value.casefold(),
+        )
+        state["text_titles"] = titles
+        text_dropdown.options = [ft.dropdown.Option(key=title, text=title) for title in titles]
+
+    def _refresh_courses() -> None:
+        student_id = _selected_student_id()
+        if student_id is None:
+            state["courses"] = []
+            course_dropdown.options = []
+            course_dropdown.value = None
+            course_dropdown.disabled = True
+            return
+
+        courses = list(controller.list_courses(student_id=student_id, limit=200, offset=0))
+        state["courses"] = courses
+        course_dropdown.options = [
+            ft.dropdown.Option(key=str(record.get("id")), text=f"{record.get('kur_no')}. Kur")
+            for record in courses
+        ]
+        course_dropdown.disabled = False
+        if course_dropdown.value and not any(str(record.get("id")) == str(course_dropdown.value) for record in courses):
+            course_dropdown.value = None
+
+    def _refresh_records() -> None:
+        course_id = _selected_course_id()
+        if course_id is None:
+            state["records_by_day"] = {}
+            selected_info.value = "Her gun icin istediginiz kadar metin kaydi ekleyin."
+            history_column.controls = [_empty_history("Kur secildiginde gunluk kayitlar burada gorunur.")]
+            return
+
+        records = list(controller.list_course_lessons(course_id))
+        records_by_day: dict[int, list[dict]] = {day: [] for day in range(1, DAYS_PER_COURSE + 1)}
         for record in records:
-            record_id = int(record.get("id", 0))
-            lesson_cache[record_id] = record
-            lesson_dropdown.options.append(
-                ft.dropdown.Option(
-                    key=str(record_id),
-                    text=f"Kurs {record.get('course_id')} | Ders {record.get('lesson_no')} | {record.get('tarih')}",
-                )
-            )
-            if _matches_search(record, (search_field.value or "").strip()):
-                filtered_records.append(record)
+            day_no = int(record.get("gun_no") or 1)
+            if 1 <= day_no <= DAYS_PER_COURSE:
+                records_by_day[day_no].append(record)
 
-        lessons_list.controls = [_build_lesson_card(record) for record in filtered_records]
-        total_info_text.value = f"Toplam {len(filtered_records)} ders"
+        state["records_by_day"] = records_by_day
+        history_column.controls = [_build_day_section(day_no) for day_no in range(1, DAYS_PER_COURSE + 1)]
 
-        if not filtered_records:
-            lessons_list.controls = [
-                AppCard(
-                    content=ft.Row(
-                        spacing=10,
-                        controls=[
-                            ft.Icon(ft.Icons.INBOX_OUTLINED, color=colors["text_secondary"]),
-                            ft.Text(tr_text("list_unavailable"), color=colors["text_secondary"]),
-                        ],
-                    )
+        selected_course = next((record for record in state["courses"] if str(record.get("id")) == str(course_id)), {})
+        selected_info.value = f"{selected_course.get('kur_no', '-')}. Kur | Toplam {len(records)} metin kaydi"
+
+    def _select_day(day_no: int, page: ft.Page | None) -> None:
+        day_dropdown.value = str(day_no)
+        result_text.value = f"{day_no}. Gun secildi."
+        if page is not None:
+            page.update()
+
+    def _build_record_row(index: int, record: dict) -> ft.Control:
+        note = _as_text(record.get("ogretmen_notu"))
+        controls: list[ft.Control] = [
+            ft.Row(
+                alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+                vertical_alignment=ft.CrossAxisAlignment.START,
+                controls=[
+                    ft.Text(
+                        f"{index}) {_as_text(record.get('metin'))}",
+                        size=14,
+                        weight=ft.FontWeight.W_700,
+                        color=colors["text_primary"],
+                    ),
+                    ft.Text(f"ID {record.get('id')}", size=11, color=colors["text_secondary"]),
+                ],
+            ),
+            ft.Row(
+                spacing=12,
+                controls=[
+                    _metric("Hiz", _format_number(record.get("okuma_hizi"))),
+                    _metric("Anlama", _format_number(record.get("anlama_algi"))),
+                ],
+            ),
+        ]
+        if note:
+            controls.append(ft.Text(note, size=12, color=colors["text_secondary"], selectable=True))
+
+        return ft.Container(
+            padding=12,
+            border_radius=8,
+            bgcolor=colors["surface"],
+            border=ft.Border(
+                top=ft.BorderSide(1, colors["border"]),
+                right=ft.BorderSide(1, colors["border"]),
+                bottom=ft.BorderSide(1, colors["border"]),
+                left=ft.BorderSide(1, colors["border"]),
+            ),
+            content=ft.Column(spacing=6, controls=controls),
+        )
+
+    def _build_average_block(records: list[dict]) -> ft.Control:
+        speed_average = _average([record.get("okuma_hizi") for record in records])
+        comprehension_average = _average([record.get("anlama_algi") for record in records])
+        return ft.Container(
+            padding=12,
+            border_radius=8,
+            bgcolor="#F8FAFC",
+            content=ft.Column(
+                spacing=6,
+                controls=[
+                    ft.Text("Gun Ortalamasi", size=13, weight=ft.FontWeight.W_700, color=colors["text_primary"]),
+                    _metric("Hiz", speed_average),
+                    _metric("Anlama", comprehension_average),
+                ],
+            ),
+        )
+
+    def _build_day_section(day_no: int) -> ft.Control:
+        records = list(dict(state["records_by_day"]).get(day_no, []))
+        record_controls = [_build_record_row(index, record) for index, record in enumerate(records, start=1)]
+        if not record_controls:
+            record_controls = [
+                ft.Container(
+                    padding=12,
+                    border_radius=8,
+                    bgcolor="#F8FAFC",
+                    content=ft.Text("Ders kaydi yok", size=13, color=colors["text_secondary"]),
                 )
             ]
 
-    def on_student_change(e: ft.ControlEvent) -> None:
-        selected_student_id = int((student_dropdown.value or "0").strip()) if student_dropdown.value else None
-        refresh_courses(selected_student_id)
+        card = AppCard(
+            content=ft.Column(
+                spacing=10,
+                controls=[
+                    ft.Row(
+                        alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+                        controls=[
+                            ft.Text(f"{day_no}. Gun", size=16, weight=ft.FontWeight.W_700, color=colors["text_primary"]),
+                            ft.Text(f"{len(records)} kayit", size=12, color=colors["text_secondary"]),
+                        ],
+                    ),
+                    *record_controls,
+                    _build_average_block(records),
+                ],
+            )
+        )
+        card.on_click = lambda e: _select_day(day_no, e.page)
+        return card
+
+    def _handle_student_change(e: ft.ControlEvent) -> None:
         course_dropdown.value = None
+        _refresh_courses()
+        _refresh_records()
+        result_text.value = "Kur secin."
         e.page.update()
 
-    student_dropdown.on_change = on_student_change
+    def _handle_course_change(e: ft.ControlEvent) -> None:
+        _refresh_records()
+        result_text.value = "Gun secip metin kaydi ekleyin."
+        e.page.update()
 
-    def handle_create(e: ft.ControlEvent) -> None:
-        is_valid, _, _ = _validate_before_save()
-        if not is_valid:
+    def _handle_day_change(e: ft.ControlEvent) -> None:
+        result_text.value = f"{_selected_day()}. Gun icin yeni kayit ekleyebilirsiniz."
+        e.page.update()
+
+    def _handle_text_change(e: ft.ControlEvent) -> None:
+        text_field.value = _as_text(text_dropdown.value)
+        e.page.update()
+
+    def _handle_save(e: ft.ControlEvent) -> None:
+        student_id = _selected_student_id()
+        course_id = _selected_course_id()
+        day_no = _selected_day()
+
+        if student_id is None:
+            result_text.value = "Lutfen ogrenci secin."
             e.page.update()
             return
+        if course_id is None:
+            result_text.value = "Lutfen kur secin."
+            e.page.update()
+            return
+        if not _as_text(text_field.value):
+            result_text.value = "Metin adi zorunludur."
+            e.page.update()
+            return
+
+        payload = {
+            "student_id": student_id,
+            "course_id": course_id,
+            "day_no": day_no,
+            "metin": text_field.value,
+            "okuma_hizi": speed_field.value,
+            "anlama_algi": comprehension_field.value,
+            "notlar": notes_field.value,
+        }
+
         try:
-            record_id = controller.create_lesson(payload())
-            lesson_dropdown.value = str(record_id)
-            result_text.value = tr_text("created")
-            refresh_lessons()
+            record_id = controller.create_course_day_entry(payload)
+            _refresh_records()
+            _clear_entry_fields()
+            result_text.value = f"{day_no}. Gun icin yeni kayit eklendi. Kayit ID: {record_id}"
         except ValueError as exc:
             result_text.value = tr_error_message(exc)
         except Exception as exc:
             result_text.value = tr_error_message(exc)
         e.page.update()
 
-    def handle_get(e: ft.ControlEvent) -> None:
-        lesson_id = _selected_lesson_id()
-        if lesson_id is None:
-            result_text.value = "Lütfen kayıtlı ders seçin."
-            e.page.update()
-            return
-        try:
-            record = controller.get_lesson(lesson_id)
-            if not record:
-                result_text.value = tr_text("record_not_found")
-                e.page.update()
-                return
-
-            _fill_form_from_record(record)
-            result_text.value = tr_text("get_success")
-        except ValueError as exc:
-            result_text.value = tr_error_message(exc)
-        except Exception as exc:
-            result_text.value = tr_error_message(exc)
-        e.page.update()
-
-    def handle_list(e: ft.ControlEvent) -> None:
-        try:
-            refresh_lessons()
-            result_text.value = tr_text("list_refresh")
-        except ValueError as exc:
-            result_text.value = tr_error_message(exc)
-        except Exception as exc:
-            result_text.value = tr_error_message(exc)
-        e.page.update()
-
-    def handle_update(e: ft.ControlEvent) -> None:
-        lesson_id = _selected_lesson_id()
-        if lesson_id is None:
-            result_text.value = "Lütfen güncellenecek dersi seçin."
-            e.page.update()
-            return
-
-        is_valid, _, course_id = _validate_before_save()
-        if not is_valid:
-            e.page.update()
-            return
-
-        try:
-            existing = controller.get_lesson(lesson_id) or {}
-            existing_lesson_no = int(existing.get("lesson_no") or controller.suggest_next_lesson_no(int(course_id or 0)))
-            updated_payload = payload(lesson_no_override=existing_lesson_no)
-            updated = controller.update_lesson(lesson_id, updated_payload)
-            result_text.value = tr_text("updated") if updated else tr_text("record_not_found")
-            refresh_lessons()
-        except ValueError as exc:
-            result_text.value = tr_error_message(exc)
-        except Exception as exc:
-            result_text.value = tr_error_message(exc)
-        e.page.update()
-
-    def handle_delete(e: ft.ControlEvent) -> None:
-        lesson_id = _selected_lesson_id()
-        if lesson_id is None:
-            result_text.value = "Lütfen silinecek dersi seçin."
-            e.page.update()
-            return
-        try:
-            deleted = controller.delete_lesson(lesson_id)
-            result_text.value = tr_text("deleted") if deleted else tr_text("record_not_found")
-            lesson_dropdown.value = None
-            refresh_lessons()
-        except ValueError as exc:
-            result_text.value = tr_error_message(exc)
-        except Exception as exc:
-            result_text.value = tr_error_message(exc)
-        e.page.update()
-
-    def _on_search_change(e: ft.ControlEvent) -> None:
-        refresh_lessons()
-        e.page.update()
-
-    search_field.on_change = _on_search_change
+    student_dropdown.on_select = _handle_student_change
+    course_dropdown.on_select = _handle_course_change
+    day_dropdown.on_select = _handle_day_change
+    text_dropdown.on_select = _handle_text_change
 
     form_fields = ft.ResponsiveRow(
         columns=12,
-        spacing=12,
-        run_spacing=12,
+        spacing=16,
+        run_spacing=18,
         controls=[
-            ft.Container(col={"xs": 12, "sm": 12, "md": 12}, content=student_dropdown),
-            ft.Container(col={"xs": 12, "sm": 12, "md": 12}, content=course_dropdown),
-            ft.Container(col={"xs": 12, "sm": 12, "md": 12}, content=lesson_dropdown),
-            ft.Container(col={"xs": 12, "sm": 6, "md": 6}, content=date_picker),
-            ft.Container(col={"xs": 12, "sm": 6, "md": 6}, content=text_field),
-            ft.Container(col={"xs": 12, "sm": 4, "md": 4}, content=word_count_field),
-            ft.Container(col={"xs": 12, "sm": 4, "md": 4}, content=duration_field),
-            ft.Container(col={"xs": 12, "sm": 4, "md": 4}, content=comprehension_field),
-        ],
-    )
-
-    form_actions = ft.Row(
-        spacing=8,
-        controls=[
-            PrimaryButton("Dersi Kaydet", on_click=handle_create, icon=ft.Icons.SAVE),
-            SecondaryButton("Getir", on_click=handle_get, icon=ft.Icons.DOWNLOAD_DONE),
-            SecondaryButton("Listele", on_click=handle_list, icon=ft.Icons.LIST),
-            SecondaryButton("Guncelle", on_click=handle_update, icon=ft.Icons.EDIT),
-            SecondaryButton("Sil", on_click=handle_delete, icon=ft.Icons.DELETE_OUTLINE),
+            ft.Container(col={"xs": 12}, content=student_dropdown),
+            ft.Container(col={"xs": 12, "sm": 6}, content=course_dropdown),
+            ft.Container(col={"xs": 12, "sm": 6}, content=day_dropdown),
+            ft.Container(col={"xs": 12}, content=text_dropdown),
+            ft.Container(col={"xs": 12}, content=text_field),
+            ft.Container(col={"xs": 12, "sm": 6}, content=speed_field),
+            ft.Container(col={"xs": 12, "sm": 6}, content=comprehension_field),
+            ft.Container(col={"xs": 12}, content=notes_field),
         ],
     )
 
     form_panel = ContentCard(
-        title="Ders Bilgileri",
-        subtitle="Ders kaydi olustur ve yonet",
+        title="Ders Kaydi",
+        subtitle="Gun bazli dinamik metin kaydi",
         content=ft.Column(
             spacing=16,
-            controls=[form_fields, form_actions, result_text],
+            controls=[
+                selected_info,
+                form_fields,
+                PrimaryButton("Dersi Kaydet", on_click=_handle_save, icon=ft.Icons.SAVE),
+                result_text,
+            ],
         ),
     )
-    form_panel.width = 520
+    form_panel.width = 560
 
-    list_panel = ContentCard(
-        title="Ders Listesi",
-        subtitle="Tum kayitlari goruntuleyin",
-        action=search_field,
-        content=ft.Column(
-            spacing=12,
-            expand=True,
-            controls=[lessons_list, total_info_text],
-        ),
+    history_panel = ContentCard(
+        title="Gunluk Kayitlar",
+        subtitle="Her gunun metinleri ve ortalamalari",
+        content=history_column,
     )
-    list_panel.expand = True
+    history_panel.expand = True
 
     try:
-        refresh_students()
-        refresh_courses()
-        refresh_lessons()
-    except Exception:
-        lessons_list.controls = [ft.Text(tr_text("list_unavailable"))]
+        _refresh_texts()
+        _refresh_students()
+        _refresh_courses()
+        _refresh_records()
+    except Exception as exc:
+        result_text.value = tr_error_message(exc)
+        history_column.controls = [_empty_history("Kayitlar yuklenemedi.")]
 
     layout = ft.Column(
         spacing=16,
         expand=True,
         controls=[
             ft.Text("Ders Kayitlari", size=24, weight=ft.FontWeight.W_700, color=colors["text_primary"]),
-            TwoColumnLayout(left=form_panel, right=list_panel, left_flex=0, right_flex=1, spacing=24),
+            TwoColumnLayout(left=form_panel, right=history_panel, left_flex=0, right_flex=1, spacing=24),
         ],
     )
 

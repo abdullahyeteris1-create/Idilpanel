@@ -12,6 +12,7 @@ from views.pages.pdf import build_pdf_page
 from views.pages.progress_reports import build_progress_reports_page
 from views.pages.settings import build_settings_page
 from views.pages.students_mvp import build_students_mvp_page
+from views.pages.text_library import build_text_library_page
 from views.pages.weekly_program_mvp import build_weekly_program_mvp_page
 
 
@@ -26,6 +27,7 @@ ROUTE_REGISTRY: dict[str, dict[str, str | RouteBuilder]] = {
     "/courses": {"title": "Kurslar", "builder": build_courses_page},
     "/courses-v2": {"title": "Kurslar V2", "builder": build_courses_v2_page},
     "/lesson-records": {"title": "Ders Kayitlari", "builder": build_lesson_records_page},
+    "/text-library": {"title": "Metin Kutuphanesi", "builder": build_text_library_page},
     "/progress-reports": {"title": "Gelisim Raporlari", "builder": build_progress_reports_page},
     "/pdf": {"title": "PDF", "builder": build_pdf_page},
     "/settings": {"title": "Ayarlar", "builder": build_settings_page},

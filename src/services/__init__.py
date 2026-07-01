@@ -6,6 +6,7 @@ from .lesson_service import LessonService
 from .measurement_service import MeasurementService
 from .schedule_service import ScheduleService
 from .student_service import StudentService
+from .text_service import TextService
 
 __all__ = [
 	"BaseService",
@@ -14,4 +15,5 @@ __all__ = [
 	"ScheduleService",
 	"LessonService",
 	"MeasurementService",
+	"TextService",
 ]

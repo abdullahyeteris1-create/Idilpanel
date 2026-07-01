@@ -51,6 +51,19 @@ class StudentService(BaseService):
         self.validate_student()
         return self.get_repository("student").list_all(limit, offset)
 
+    def list_active_students(self, limit: int = 100, offset: int = 0):
+        self.validate_student()
+        repository = self.get_repository("student")
+        if hasattr(repository, "list_active"):
+            return repository.list_active(limit, offset)
+        return [
+            record
+            for record in repository.list_all(limit, offset)
+            if int(record.get("is_active", 1) or 0) == 1
+            and not record.get("deleted_at")
+            and str(record.get("durum") or "").strip() == "Aktif"
+        ]
+
     def update_student(self, record_id, data):
         validated_data = self.validate_student(data)
         repository_payload = self._to_repository_payload(validated_data)

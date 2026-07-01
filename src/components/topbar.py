@@ -14,6 +14,7 @@ PAGE_TITLES: dict[str, str] = {
     "/lesson-records": "Ders Kayitlari",
     "/measurements": "Olcumler",
     "/courses": "Kurslar",
+    "/text-library": "Metin Kutuphanesi",
     "/progress-reports": "Gelisim Raporlari",
     "/parent-reports": "Veli Raporlari",
     "/settings": "Ayarlar",
